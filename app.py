@@ -22,6 +22,7 @@ st.markdown("""
     .stApp {
         background-color: #0E1117;
     }
+    #MainMenu, footer {visibility: hidden;}
     .block-container {
         padding-top: 3.2rem;
         padding-bottom: 2.5rem;
