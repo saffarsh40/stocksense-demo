@@ -243,7 +243,7 @@ if "last_annotated_img" not in st.session_state:
 if "last_barcode_hits" not in st.session_state:
     st.session_state.last_barcode_hits = []
 if "active_model_used" not in st.session_state:
-    st.session_state.active_model_used = "gemini-3.8-flash"
+    st.session_state.active_model_used = "gemini-3.5-flash-lite"
 
 # --- SIDEBAR SETTINGS ---
 with st.sidebar:
@@ -310,7 +310,7 @@ def scan_local_barcodes(pil_image: Image.Image, catalog: list):
 
 
 def call_gemini_with_failover(client: genai.Client, contents: list) -> ShelfScanResult:
-    model_chain = ["gemini-3.8-flash", "gemini-2.5-flash", "gemini-2.5-flash-lite"]
+    model_chain = ["gemini-3.5-flash-lite", "gemini-3.8-flash"]
     last_err = None
 
     for model_name in model_chain:
@@ -331,11 +331,11 @@ def call_gemini_with_failover(client: genai.Client, contents: list) -> ShelfScan
                 last_err = err
                 err_str = str(err)
                 if "503" in err_str or "UNAVAILABLE" in err_str or "429" in err_str:
-                    time.sleep(0.7)
+                    time.sleep(0.5)
                     continue
                 raise err
 
-    raise RuntimeError(f"All fallback models busy right now. Details: {last_err}")
+    raise RuntimeError(f"Models busy right now. Details: {last_err}")
 
 
 def analyze_media_frames(pil_images: List[Image.Image], catalog: list, api_key: str, is_video_walkthrough: bool = False):
@@ -402,7 +402,7 @@ def extract_video_keyframes(video_bytes: bytes, max_frames: int = 8) -> List[Ima
             if ret:
                 rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 pil_f = Image.fromarray(rgb)
-                pil_f.thumbnail((1024, 1024))
+                pil_f.thumbnail((800, 800))
                 frames.append(pil_f)
     cap.release()
     os.remove(tmp_path)
@@ -509,7 +509,7 @@ with tab1:
 
         # --- MODE A: LIVE CONTINUOUS REAR-CAMERA AUTO-SCANNER ---
         if audit_mode == "🎥 Live Rear-Camera Auto-Scanner":
-            st.caption("Live rear-camera viewfinder with real-time frame streaming & automatic 3.5-second AI sweeps.")
+            st.caption("Live rear-camera viewfinder with real-time frame streaming & automatic 3-second AI sweeps.")
             catalog_json = json.dumps([
                 {
                     "sku_key": i["sku_key"],
@@ -586,9 +586,9 @@ with tab1:
                 if (scanning) {{
                     toggleBtn.innerText = "⏸ Pause Live AI Scan";
                     toggleBtn.style.background = "#DA3633";
-                    timerEl.innerText = "Auto-Scan: ON (3.5s)";
+                    timerEl.innerText = "Auto-Scan: ON (3.0s)";
                     scanSingleNow();
-                    intervalId = setInterval(scanSingleNow, 3500);
+                    intervalId = setInterval(scanSingleNow, 3000);
                 }} else {{
                     toggleBtn.innerText = "▶ Resume Live Continuous AI Scan";
                     toggleBtn.style.background = "#1F6FEB";
@@ -640,12 +640,12 @@ with tab1:
                 badge.innerText = "🔍 READING LABELS...";
                 badge.style.color = "#58A6FF";
 
-                canvas.width = 768;
-                canvas.height = Math.round((video.videoHeight / video.videoWidth) * 768);
+                canvas.width = 512;
+                canvas.height = Math.round((video.videoHeight / video.videoWidth) * 512);
                 canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-                const b64 = canvas.toDataURL('image/jpeg', 0.82).split(',')[1];
+                const b64 = canvas.toDataURL('image/jpeg', 0.78).split(',')[1];
 
-                const models = ["gemini-3.8-flash", "gemini-2.5-flash", "gemini-2.5-flash-lite"];
+                const models = ["gemini-3.5-flash-lite", "gemini-3.8-flash"];
                 let parsed = null;
                 let usedModel = "";
                 let lastErrorMsg = "";
