@@ -24,7 +24,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- COMMERCIAL SAAS CUSTOM CSS ---
+# --- COMMERCIAL SAAS CUSTOM CSS (MOBILE-OPTIMIZED) ---
 st.markdown("""
 <style>
     .stApp {
@@ -32,7 +32,7 @@ st.markdown("""
     }
     #MainMenu, footer {visibility: hidden;}
     .block-container {
-        padding-top: 2.2rem;
+        padding-top: 1.8rem;
         padding-bottom: 2.5rem;
         max-width: 1340px;
     }
@@ -42,11 +42,11 @@ st.markdown("""
         align-items: center;
         flex-wrap: wrap;
         gap: 10px;
-        padding: 16px 22px;
+        padding: 14px 20px;
         background: linear-gradient(135deg, #151C28 0%, #0E131D 100%);
         border: 1px solid #263042;
         border-radius: 14px;
-        margin-bottom: 18px;
+        margin-bottom: 16px;
         box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
     }
     .status-pill {
@@ -61,26 +61,28 @@ st.markdown("""
     div[data-testid="stMetric"] {
         background: linear-gradient(180deg, #151B26 0%, #111620 100%);
         border: 1px solid #263042;
-        padding: 16px 18px;
+        padding: 14px 16px;
         border-radius: 14px;
         box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
     }
     div[data-testid="stMetricValue"] {
-        font-size: 1.7rem !important;
+        font-size: 1.6rem !important;
         font-weight: 800 !important;
         color: #F0F6FC !important;
     }
     .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
+        gap: 6px;
         background-color: #151B26;
         padding: 6px;
         border-radius: 12px;
         border: 1px solid #263042;
+        overflow-x: auto;
     }
     .stTabs [data-baseweb="tab"] {
         border-radius: 8px;
-        padding: 9px 18px;
+        padding: 8px 14px;
         font-weight: 600;
+        white-space: nowrap;
     }
     .stTabs [aria-selected="true"] {
         background-color: #1F6FEB !important;
@@ -104,25 +106,25 @@ st.markdown("""
         font-size: 0.74rem;
         margin-right: 6px;
     }
-    .evidence-box {
+    .feed-item {
         background-color: #121822;
-        border-left: 3px solid #3FB950;
-        padding: 10px 14px;
+        border-left: 3px solid #1F6FEB;
+        padding: 8px 12px;
         border-radius: 0 8px 8px 0;
-        margin-bottom: 8px;
-        font-size: 0.86rem;
+        margin-bottom: 6px;
+        font-size: 0.84rem;
     }
     div.stButton > button[kind="primary"] {
         background: linear-gradient(90deg, #1F6FEB 0%, #388BFD 100%);
         border: none;
-        border-radius: 8px;
-        font-weight: 600;
-        padding: 0.55rem 1.2rem;
+        border-radius: 10px;
+        font-weight: 700;
+        padding: 0.65rem 1.2rem;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 45-SKU SAUDI SUPERMARKET SAP MATERIAL MASTER CATALOG ---
+# --- 42-SKU SAUDI SUPERMARKET SAP MATERIAL MASTER CATALOG ---
 DEFAULT_INVENTORY = [
     # Pantry & Cooking Staples
     {"sku_key": "osra_sugar", "sap_id": "SAP-10045210", "ean13": "6281007041012", "category": "Pantry", "name": "Osra White Sugar 1kg", "arabic_name": "سكر الأسرة الأبيض 1 كجم", "keywords": ["osra", "al osra", "sugar", "أسرة", "الأسرة", "سكر", "قيراط"], "aisle": "Aisle B2", "price": 5.50, "erp_qty": 12, "physical_qty": 0, "reorder_pt": 6},
@@ -181,78 +183,43 @@ DEFAULT_INVENTORY = [
     {"sku_key": "lifebuoy_handwash", "sap_id": "SAP-10045972", "ean13": "6281006080111", "category": "Personal Care", "name": "Lifebuoy Total 10 Hand Wash 200ml", "arabic_name": "غسول اليدين لايفبوي 200 مل", "keywords": ["lifebuoy", "hand wash", "soap", "لايفبوي", "غسول", "صابون"], "aisle": "Aisle G1", "price": 9.50, "erp_qty": 16, "physical_qty": 0, "reorder_pt": 8},
 ]
 
+# --- SHARED MULTI-DEVICE SERVER STORE (PHONE -> LAPTOP REAL-TIME SYNC) ---
+@st.cache_resource
+def get_shared_store_db():
+    return {
+        "inventory": [item.copy() for item in DEFAULT_INVENTORY],
+        "last_sync": "09:15 AM (SAP S/4HANA Connected)",
+        "activity_log": [],
+        "last_updated_ts": time.time(),
+    }
+
+shared_db = get_shared_store_db()
+
 # --- STRUCTURED OUTPUT SCHEMA ---
 class DetectedProduct(BaseModel):
-    sku_key: str = Field(
-        description="Matched catalog key from the SAP catalog, or 'unmapped_item'"
-    )
-    sap_id: str = Field(
-        description="Corresponding SAP Material ID from the catalog, or 'SAP-UNMAPPED'"
-    )
-    product_name: str = Field(
-        description="Clean English + Arabic product name identified on packaging"
-    )
-    extracted_text_ar_en: str = Field(
-        description="Verbatim Arabic and English words read from the label/packaging"
-    )
-    detected_barcode: Optional[str] = Field(
-        default=None,
-        description="Any EAN/UPC barcode digits visible on the package, if readable"
-    )
-    unit_count: int = Field(
-        description="Exact number of physical units/facings of this product visible"
-    )
-    confidence: float = Field(
-        description="Confidence score between 0.0 and 1.0"
-    )
+    sku_key: str = Field(description="Matched catalog key from the SAP catalog, or 'unmapped_item'")
+    sap_id: str = Field(description="Corresponding SAP Material ID from the catalog, or 'SAP-UNMAPPED'")
+    product_name: str = Field(description="Clean English + Arabic product name identified on packaging")
+    extracted_text_ar_en: str = Field(description="Verbatim Arabic and English words read from the label/packaging")
+    detected_barcode: Optional[str] = Field(default=None, description="Any EAN/UPC barcode digits visible on the package")
+    unit_count: int = Field(description="Exact number of physical units/facings of this product visible")
+    confidence: float = Field(description="Confidence score between 0.0 and 1.0")
 
 class ShelfScanResult(BaseModel):
     detections: List[DetectedProduct]
-    raw_visible_text_summary: str = Field(
-        description="Brief summary of all readable Arabic/English shelf labels and brands detected"
-    )
+    raw_visible_text_summary: str = Field(description="Brief summary of all readable Arabic/English shelf labels detected")
 
 # --- SESSION STATE ---
-if "inventory" not in st.session_state:
-    st.session_state.inventory = [item.copy() for item in DEFAULT_INVENTORY]
-if "last_sync" not in st.session_state:
-    st.session_state.last_sync = "09:15 AM (SAP S/4HANA Synced)"
-if "scan_history" not in st.session_state:
-    st.session_state.scan_history = []
 if "last_annotated_img" not in st.session_state:
     st.session_state.last_annotated_img = None
 if "last_barcode_hits" not in st.session_state:
     st.session_state.last_barcode_hits = []
 if "active_model_used" not in st.session_state:
     st.session_state.active_model_used = "gemini-3.5-flash-lite"
-if "sync_banner_msg" not in st.session_state:
-    st.session_state.sync_banner_msg = ""
-
-# --- HANDLE LIVE BRIDGE SYNC FROM QUERY PARAMS ---
-if "sync_payload" in st.query_params:
-    try:
-        payload_data = json.loads(st.query_params["sync_payload"])
-        mode_flag = st.query_params.get("sync_mode", "set")
-        updated_names = []
-        for item in st.session_state.inventory:
-            sap = item["sap_id"]
-            if sap in payload_data:
-                qty_val = int(payload_data[sap])
-                if mode_flag == "add":
-                    item["physical_qty"] += qty_val
-                else:
-                    item["physical_qty"] = qty_val
-                updated_names.append(f"{item['name']} → {item['physical_qty']} unit(s)")
-        st.query_params.clear()
-        if updated_names:
-            st.session_state.sync_banner_msg = "✅ Synced to SAP Ledger: " + ", ".join(updated_names)
-        st.rerun()
-    except Exception:
-        st.query_params.clear()
 
 # --- SIDEBAR SETTINGS ---
 with st.sidebar:
-    st.markdown("### ⚙️ Engine Configuration")
+    st.markdown("### ⚙️ Engine & Store Controls")
     secret_key = st.secrets.get("GEMINI_API_KEY", "") if hasattr(st, "secrets") else ""
     user_api_key = st.text_input(
         "Gemini API Key (Optional Override)",
@@ -262,13 +229,13 @@ with st.sidebar:
     )
     active_gemini_key = user_api_key.strip() or secret_key or os.environ.get("GEMINI_API_KEY", "")
     st.caption(f"Active Model: **{st.session_state.active_model_used}**")
-    st.caption(f"Loaded SAP Catalog: **{len(st.session_state.inventory)} SKUs**")
-    if st.button("🔄 Reset All Counts to Zero", use_container_width=True):
-        st.session_state.inventory = [item.copy() for item in DEFAULT_INVENTORY]
-        st.session_state.scan_history = []
+    st.caption(f"Shared Store DB: **{len(shared_db['inventory'])} SKUs**")
+    if st.button("🔄 Reset Entire Store Audit to Zero", use_container_width=True):
+        shared_db["inventory"] = [item.copy() for item in DEFAULT_INVENTORY]
+        shared_db["activity_log"] = []
+        shared_db["last_updated_ts"] = time.time()
         st.session_state.last_annotated_img = None
         st.session_state.last_barcode_hits = []
-        st.session_state.sync_banner_msg = ""
         st.rerun()
 
 # --- BARCODE & MULTI-MODEL RESILIENT VISION ENGINE ---
@@ -342,7 +309,7 @@ def call_gemini_with_failover(client: genai.Client, contents: list) -> ShelfScan
                     continue
                 raise err
 
-    raise RuntimeError(f"Temporary cloud traffic spike. Please retry in a few seconds. ({last_err})")
+    raise RuntimeError(f"Temporary cloud traffic spike. Please tap Scan again in a few seconds. ({last_err})")
 
 
 def analyze_media_frames(pil_images: List[Image.Image], catalog: list, api_key: str, is_video_walkthrough: bool = False):
@@ -416,7 +383,7 @@ def extract_video_keyframes(video_bytes: bytes, max_frames: int = 8) -> List[Ima
     return frames
 
 
-def apply_scan_results(scan_result: ShelfScanResult, barcode_hits: list, accumulate: bool):
+def update_shared_inventory(scan_result: ShelfScanResult, barcode_hits: list, accumulate: bool, source_label: str = "Field Mobile"):
     detected_map = {}
     for det in scan_result.detections:
         detected_map[det.sku_key] = detected_map.get(det.sku_key, 0) + det.unit_count
@@ -426,102 +393,133 @@ def apply_scan_results(scan_result: ShelfScanResult, barcode_hits: list, accumul
         if k != "unmapped_item" and k not in detected_map:
             detected_map[k] = 1
 
-    matched_skus = 0
-    for item in st.session_state.inventory:
+    matched_items = []
+    for item in shared_db["inventory"]:
         k = item["sku_key"]
         if k in detected_map:
             if accumulate:
                 item["physical_qty"] += detected_map[k]
             else:
                 item["physical_qty"] = detected_map[k]
-            matched_skus += 1
+            matched_items.append(f"{item['name']} ({item['sap_id']}) → {item['physical_qty']} unit(s)")
 
-    st.session_state.scan_history.insert(0, {
+    shared_db["last_updated_ts"] = time.time()
+    shared_db["activity_log"].insert(0, {
         "timestamp": datetime.now().strftime("%H:%M:%S"),
+        "source": source_label,
         "model": st.session_state.active_model_used,
         "summary": scan_result.raw_visible_text_summary,
+        "matched": matched_items,
         "items": [d.model_dump() for d in scan_result.detections],
     })
-    return matched_skus
+    return matched_items
 
 
 # --- TOP BRAND BAR ---
 st.markdown(f"""
 <div class="brand-bar">
     <div>
-        <span style="font-size: 1.35rem; font-weight: 800; color: #F0F6FC; letter-spacing: -0.4px;">
+        <span style="font-size: 1.3rem; font-weight: 800; color: #F0F6FC; letter-spacing: -0.4px;">
             📦 StockSense AI
         </span>
         <span style="color: #8B949E; font-size: 0.85rem; margin-left: 10px;">
-            Enterprise Shelf Vision • Bilingual OCR (AR/EN) • SAP S/4HANA Live Connector
+            Real-Time Field-to-Manager Shelf & SAP Intelligence
         </span>
     </div>
-    <div class="status-pill">● SAP Connected ({len(st.session_state.inventory)} SKUs • {st.session_state.active_model_used})</div>
+    <div class="status-pill">● Live Cloud Store Sync Active ({len(shared_db['inventory'])} SKUs)</div>
 </div>
 """, unsafe_allow_html=True)
 
-if st.session_state.sync_banner_msg:
-    st.success(st.session_state.sync_banner_msg)
-
-# --- CALCULATE LIVE METRICS ---
-df = pd.DataFrame(st.session_state.inventory)
-df["variance"] = df["physical_qty"] - df["erp_qty"]
-df["abs_variance"] = df["variance"].abs()
-df["rev_at_risk"] = df.apply(lambda r: abs(r["variance"]) * r["price"] if r["variance"] < 0 else 0.0, axis=1)
-df["status"] = df.apply(
-    lambda r: "🔴 Stockout" if r["physical_qty"] == 0 else ("🟠 Low Stock" if r["physical_qty"] <= r["reorder_pt"] else "🟢 Optimal"),
-    axis=1,
-)
-
-total_erp = int(df["erp_qty"].sum())
-total_phys = int(df["physical_qty"].sum())
-accuracy = round((min(total_phys, total_erp) / total_erp) * 100, 1) if total_erp > 0 else 100.0
-rev_risk = df["rev_at_risk"].sum()
-alerts_count = len(df[df["physical_qty"] <= df["reorder_pt"]])
-scanned_skus_count = len(df[df["physical_qty"] > 0])
-
-c1, c2, c3, c4 = st.columns(4)
-c1.metric("Inventory Accuracy", f"{accuracy}%", f"{scanned_skus_count} of {len(df)} SKUs audited")
-c2.metric("Revenue at Risk", f"SAR {rev_risk:,.2f}", "Phantom stock exposure", delta_color="inverse")
-c3.metric("Replenishment Alerts", f"{alerts_count} SKUs", "SAP PO triggers")
-c4.metric("SAP Material Master", f"{len(df)} Active SKUs", "Live ERP Feed")
-
-st.write("")
-
 # --- NAVIGATION TABS ---
 tab1, tab2, tab3, tab4 = st.tabs([
-    "🎥 Live Continuous & Aisle Audit",
-    "📊 Executive SAP Dashboard",
+    "📱 Field Auditor Scanner",
+    "📊 Manager Executive Dashboard (Live)",
     "📲 Automated Store Alerts",
     "📹 Live Aisle RTSP Feed",
 ])
 
 # ==========================================
-# TAB 1: LIVE CONTINUOUS, VIDEO & MULTI-PHOTO AUDIT
+# TAB 1: MOBILE-FRIENDLY FIELD AUDITOR SCANNER
 # ==========================================
 with tab1:
     col_cam, col_list = st.columns([1.1, 1], gap="large")
 
     with col_cam:
-        st.subheader("1. Aisle Capture Mode (42+ Supermarket SKUs)")
+        st.subheader("1. Field Shelf Scanner (42 Supermarket SKUs)")
         audit_mode = st.radio(
-            "Select Capture Workflow:",
+            "Capture Mode:",
             [
-                "🎥 Live Rear-Camera Auto-Scanner",
+                "📸 Instant Mobile Snap & Sync (1-Tap SAP Update)",
+                "🎥 Continuous Live Viewfinder (Preview Only)",
                 "🎞️ Aisle Walk-Through Video (100+ Items)",
-                "📸 Multi-Shelf Photo Batch",
             ],
-            horizontal=True,
+            horizontal=False,
         )
 
         accumulate_mode = st.checkbox(
-            "➕ Cumulative Batch Mode (Add newly scanned bays to existing SAP totals instead of overwriting)",
+            "➕ Add newly scanned items to existing verified total (uncheck to overwrite)",
             value=True,
         )
 
-        # --- MODE A: RESILIENT LIVE REAR-CAMERA SCANNER ---
-        if audit_mode == "🎥 Live Rear-Camera Auto-Scanner":
-            st.caption("Point at any household grocery, beverage, dairy, or cleaning product—tap a button below to sync to SAP.")
+        # --- MODE A: 1-TAP NATIVE MOBILE SNAP & INSTANT SERVER SYNC ---
+        if audit_mode == "📸 Instant Mobile Snap & Sync (1-Tap SAP Update)":
+            st.caption("Snap any shelf or product—it immediately decodes Arabic/English labels, maps to SAP, and updates the Manager's laptop dashboard in real time.")
+            cam_photo = st.camera_input("Point rear camera at product(s) and tap Take Photo")
+
+            if cam_photo is not None:
+                img_pil = Image.open(cam_photo)
+                if st.button("🚀 Verify & Push to Live SAP Dashboard", type="primary", use_container_width=True):
+                    with st.spinner("Reading Arabic/English labels & syncing to Manager Dashboard..."):
+                        try:
+                            first_ann, b_hits, scan_res = analyze_media_frames(
+                                [img_pil],
+                                shared_db["inventory"],
+                                active_gemini_key,
+                                is_video_walkthrough=False,
+                            )
+                            st.session_state.last_annotated_img = first_ann
+                            st.session_state.last_barcode_hits = b_hits
+                            matched_list = update_shared_inventory(
+                                scan_res, b_hits, accumulate=accumulate_mode, source_label="Mobile Field Snap"
+                            )
+                            if matched_list:
+                                st.success("✅ Synced to Manager Dashboard: " + " | ".join(matched_list))
+                            else:
+                                st.warning("Product read, but not in the 42-SKU catalog yet. Check Audit Trail below.")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Scan error: {e}")
+
+            st.markdown("---")
+            uploaded_files = st.file_uploader(
+                "Or upload 1–10 shelf photos from gallery",
+                type=["jpg", "jpeg", "png", "webp"],
+                accept_multiple_files=True,
+            )
+            if uploaded_files:
+                pil_batch = [Image.open(f) for f in uploaded_files]
+                if st.button(f"🔍 Scan {len(pil_batch)} Photo(s) & Sync to SAP", use_container_width=True):
+                    with st.spinner("Processing batch & updating shared SAP ledger..."):
+                        try:
+                            first_ann, b_hits, scan_res = analyze_media_frames(
+                                pil_batch,
+                                shared_db["inventory"],
+                                active_gemini_key,
+                                is_video_walkthrough=(len(pil_batch) > 1),
+                            )
+                            st.session_state.last_annotated_img = first_ann
+                            st.session_state.last_barcode_hits = b_hits
+                            matched_list = update_shared_inventory(
+                                scan_res, b_hits, accumulate=accumulate_mode, source_label="Batch Photo Upload"
+                            )
+                            st.success(f"✅ Batch synced ({len(matched_list)} SKU(s) updated on Manager Dashboard)!")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Scan error: {e}")
+
+        # --- MODE B: CONTINUOUS LIVE VIEWFINDER ---
+        elif audit_mode == "🎥 Continuous Live Viewfinder (Preview Only)":
+            st.caption("Real-time continuous viewfinder for live shelf walkthrough demonstrations.")
             catalog_json = json.dumps([
                 {
                     "sku_key": i["sku_key"],
@@ -530,7 +528,7 @@ with tab1:
                     "arabic_name": i["arabic_name"],
                     "keywords": i["keywords"],
                 }
-                for i in st.session_state.inventory
+                for i in shared_db["inventory"]
             ])
 
             live_scanner_html = f"""
@@ -539,7 +537,7 @@ with tab1:
                     <video id="cam" autoplay playsinline muted style="width:100%; max-height:265px; object-fit:cover; display:block;"></video>
                     <div id="hud" style="position:absolute; top:10px; left:10px; right:10px; display:flex; justify-content:space-between; align-items:center;">
                         <span id="badge" style="background:rgba(11,15,23,0.9); color:#3FB950; border:1px solid #3FB950; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:700;">
-                            ● LIVE REAR CAMERA READY
+                            ● LIVE CAMERA READY
                         </span>
                         <span id="timer" style="background:rgba(11,15,23,0.9); color:#58A6FF; padding:4px 10px; border-radius:999px; font-size:12px;">
                             Auto-Scan: OFF
@@ -547,105 +545,36 @@ with tab1:
                     </div>
                 </div>
                 <canvas id="canvas" style="display:none;"></canvas>
-                <canvas id="motionCanvas" width="32" height="32" style="display:none;"></canvas>
-
                 <div style="display:flex; gap:8px; margin-top:10px;">
                     <button id="toggleBtn" onclick="toggleAutoScan()" style="flex:1; background:#1F6FEB; color:#fff; border:none; padding:11px; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer;">
-                        ▶ Start Live AI Viewfinder
+                        ▶ Start Live Viewfinder
                     </button>
-                    <button onclick="scanSingleNow(true)" style="background:#21262D; color:#F0F6FC; border:1px solid #30363D; padding:11px 14px; border-radius:8px; font-weight:600; font-size:13px; cursor:pointer;">
+                    <button onclick="scanSingleNow()" style="background:#21262D; color:#F0F6FC; border:1px solid #30363D; padding:11px 14px; border-radius:8px; font-weight:600; font-size:13px; cursor:pointer;">
                         ⚡ Scan Now
                     </button>
                 </div>
-
-                <div id="liveResults" style="margin-top:10px; background:#0B0F17; border:1px solid #263042; border-radius:8px; padding:12px; min-height:95px; max-height:175px; overflow-y:auto; font-size:13px;">
-                    <span style="color:#8B949E;">Point camera at any grocery, drink, snack, or cleaning item and tap <b>Start Live AI Viewfinder</b>...</span>
-                </div>
-
-                <div style="display:flex; flex-direction:column; gap:8px; margin-top:12px;">
-                    <a id="syncSetLink" target="_top" href="#" onclick="return checkBeforeSync()" style="display:block; text-align:center; text-decoration:none; background:#238636; color:#FFFFFF; padding:12px; border-radius:8px; font-weight:700; font-size:14px;">
-                        📥 Update SAP Ledger with Live Count
-                    </a>
-                    <a id="syncAddLink" target="_top" href="#" onclick="return checkBeforeSync()" style="display:block; text-align:center; text-decoration:none; background:#1F6FEB; color:#FFFFFF; padding:12px; border-radius:8px; font-weight:700; font-size:14px;">
-                        ➕ Add Live Count to Existing SAP Total
-                    </a>
+                <div id="liveResults" style="margin-top:10px; background:#0B0F17; border:1px solid #263042; border-radius:8px; padding:12px; min-height:95px; font-size:13px;">
+                    <span style="color:#8B949E;">Point camera at products and tap <b>Start Live Viewfinder</b>...</span>
                 </div>
             </div>
-
             <script>
             const API_KEY = {json.dumps(active_gemini_key)};
             const CATALOG = {catalog_json};
             const video = document.getElementById('cam');
             const canvas = document.getElementById('canvas');
-            const motionCanvas = document.getElementById('motionCanvas');
             const badge = document.getElementById('badge');
             const timerEl = document.getElementById('timer');
             const resultsEl = document.getElementById('liveResults');
             const toggleBtn = document.getElementById('toggleBtn');
-            const syncSetLink = document.getElementById('syncSetLink');
-            const syncAddLink = document.getElementById('syncAddLink');
-
-            let scanning = false;
-            let intervalId = null;
-            let inFlight = false;
-            let currentFrameCounts = {{}};
-            let lastValidHtml = "";
-            let prevThumb = null;
-            let unchangedCount = 0;
-
-            function getParentBaseUrl() {{
-                try {{
-                    if (document.referrer) {{
-                        const u = new URL(document.referrer);
-                        return u.origin + u.pathname;
-                    }}
-                }} catch (e) {{}}
-                return window.location.origin + window.location.pathname;
-            }}
-
-            function updateSyncLinks() {{
-                const base = getParentBaseUrl();
-                const payload = encodeURIComponent(JSON.stringify(currentFrameCounts));
-                syncSetLink.href = `${{base}}?sync_payload=${{payload}}&sync_mode=set`;
-                syncAddLink.href = `${{base}}?sync_payload=${{payload}}&sync_mode=add`;
-            }}
-
-            function checkBeforeSync() {{
-                if (Object.keys(currentFrameCounts).length === 0) {{
-                    alert("Scan a catalog product first so a count appears in the box above!");
-                    return false;
-                }}
-                return true;
-            }}
-
-            function frameChangedSignificantly() {{
-                const mCtx = motionCanvas.getContext('2d');
-                mCtx.drawImage(video, 0, 0, 32, 32);
-                const data = mCtx.getImageData(0, 0, 32, 32).data;
-                if (!prevThumb) {{
-                    prevThumb = data;
-                    return true;
-                }}
-                let diff = 0;
-                for (let i = 0; i < data.length; i += 16) {{
-                    diff += Math.abs(data[i] - prevThumb[i]);
-                }}
-                prevThumb = data;
-                const avgDiff = diff / (data.length / 16);
-                return avgDiff > 4.5;
-            }}
+            let scanning = false, intervalId = null, inFlight = false, lastValidHtml = "";
 
             async function startCamera() {{
                 try {{
-                    const stream = await navigator.mediaDevices.getUserMedia({{
-                        video: {{ facingMode: {{ ideal: "environment" }}, width: {{ ideal: 1280 }} }},
-                        audio: false
-                    }});
+                    const stream = await navigator.mediaDevices.getUserMedia({{ video: {{ facingMode: {{ ideal: "environment" }} }}, audio: false }});
                     video.srcObject = stream;
                 }} catch (err) {{
                     badge.innerText = "⚠ Camera blocked";
                     badge.style.color = "#F85149";
-                    resultsEl.innerHTML = `<span style="color:#F85149;">Camera error: ${{err.message}}</span>`;
                 }}
             }}
             startCamera();
@@ -653,140 +582,78 @@ with tab1:
             function toggleAutoScan() {{
                 scanning = !scanning;
                 if (scanning) {{
-                    toggleBtn.innerText = "⏸ Pause Live Viewfinder";
+                    toggleBtn.innerText = "⏸ Pause Viewfinder";
                     toggleBtn.style.background = "#DA3633";
-                    timerEl.innerText = "Auto-Scan: ON (4.5s)";
-                    scanSingleNow(true);
-                    intervalId = setInterval(() => scanSingleNow(false), 4500);
+                    timerEl.innerText = "Auto: ON (4.5s)";
+                    scanSingleNow();
+                    intervalId = setInterval(scanSingleNow, 4500);
                 }} else {{
-                    toggleBtn.innerText = "▶ Resume Live AI Viewfinder";
+                    toggleBtn.innerText = "▶ Resume Live Viewfinder";
                     toggleBtn.style.background = "#1F6FEB";
-                    timerEl.innerText = "Auto-Scan: PAUSED";
+                    timerEl.innerText = "Auto: PAUSED";
                     clearInterval(intervalId);
                 }}
             }}
 
-            const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-
-            async function callGeminiWithRetry(base64Jpeg) {{
-                const prompt = `You are StockSense AI. Identify all grocery/household products in this frame and count the EXACT number of physical units currently visible. Map each product to its matching sap_id in this catalog: ${{JSON.stringify(CATALOG)}}. If a visible product is not in the catalog, set sap_id="SAP-UNMAPPED". Return ONLY valid JSON: {{"items": [{{"sap_id": "...", "name": "...", "text_read": "...", "count": 1}}]}}`;
-                const models = ["gemini-3.5-flash-lite", "gemini-3.8-flash"];
-
-                for (const model of models) {{
-                    for (let attempt = 0; attempt < 2; attempt++) {{
-                        try {{
-                            const url = `https://generativelanguage.googleapis.com/v1beta/models/${{model}}:generateContent`;
-                            const res = await fetch(url, {{
-                                method: "POST",
-                                headers: {{
-                                    "Content-Type": "application/json",
-                                    "x-goog-api-key": API_KEY
-                                }},
-                                body: JSON.stringify({{
-                                    contents: [{{
-                                        parts: [
-                                            {{ text: prompt }},
-                                            {{ inline_data: {{ mime_type: "image/jpeg", data: base64Jpeg }} }}
-                                        ]
-                                    }}],
-                                    generationConfig: {{ responseMimeType: "application/json", temperature: 0.1 }}
-                                }})
-                            }});
-                            const data = await res.json();
-                            if (!res.ok) {{
-                                const msg = data?.error?.message || ("HTTP " + res.status);
-                                throw new Error(msg);
-                            }}
-                            const rawText = data.candidates[0].content.parts[0].text;
-                            return {{ parsed: JSON.parse(rawText), usedModel: model }};
-                        }} catch (e) {{
-                            await sleep(700 * (attempt + 1));
-                        }}
-                    }}
-                }}
-                return null;
-            }}
-
-            async function scanSingleNow(forceManual) {{
-                if (inFlight) return;
-                if (!video.videoWidth) return;
-                if (!API_KEY) {{
-                    resultsEl.innerHTML = "<span style='color:#F85149;'>Missing GEMINI_API_KEY in Streamlit Secrets.</span>";
-                    return;
-                }}
-
-                // Smart idle check so stationary frames don't burn API quota
-                if (!forceManual && !frameChangedSignificantly()) {{
-                    unchangedCount++;
-                    if (unchangedCount > 1 && lastValidHtml) {{
-                        badge.innerText = "● LOCKED (STEADY VIEW)";
-                        badge.style.color = "#3FB950";
-                        return;
-                    }}
-                }} else {{
-                    unchangedCount = 0;
-                }}
-
+            async function scanSingleNow() {{
+                if (inFlight || !video.videoWidth || !API_KEY) return;
                 inFlight = true;
-                badge.innerText = "🔍 READING LABELS...";
+                badge.innerText = "🔍 READING...";
                 badge.style.color = "#58A6FF";
-
                 canvas.width = 512;
                 canvas.height = Math.round((video.videoHeight / video.videoWidth) * 512);
                 canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
                 const b64 = canvas.toDataURL('image/jpeg', 0.78).split(',')[1];
+                const prompt = `You are StockSense AI. Count exact physical units visible and map to SAP catalog: ${{JSON.stringify(CATALOG)}}. Return JSON: {{"items": [{{"sap_id": "...", "name": "...", "text_read": "...", "count": 1}}]}}`;
 
-                const result = await callGeminiWithRetry(b64);
-
-                if (result && result.parsed && result.parsed.items) {{
-                    badge.innerText = "● LIVE LOCK (" + result.usedModel + ")";
-                    badge.style.color = "#3FB950";
-
-                    let freshCounts = {{}};
-                    let html = `<div style="color:#3FB950; font-weight:700; margin-bottom:6px;">✅ Live Shelf View (${{new Date().toLocaleTimeString()}})</div>`;
-
-                    if (result.parsed.items.length === 0) {{
-                        html += `<div style="color:#8B949E;">No product label in frame — pan camera toward a product...</div>`;
-                    }} else {{
-                        result.parsed.items.forEach(it => {{
-                            if (it.sap_id && it.sap_id !== "SAP-UNMAPPED") {{
-                                freshCounts[it.sap_id] = (freshCounts[it.sap_id] || 0) + (it.count || 1);
-                            }}
-                            const tagColor = it.sap_id === "SAP-UNMAPPED" ? "#D29922" : "#58A6FF";
-                            html += `<div style="border-left:3px solid #3FB950; padding-left:8px; margin-bottom:6px;">
-                                <span style="color:${{tagColor}}; font-family:monospace;">[${{it.sap_id}}]</span> <b>${{it.name}}</b> — In View: <b>${{it.count}} unit(s)</b><br/>
-                                <span style="color:#8B949E; font-size:12px;">Read Text: "${{it.text_read}}"</span>
-                            </div>`;
+                for (const model of ["gemini-3.5-flash-lite", "gemini-3.8-flash"]) {{
+                    try {{
+                        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${{model}}:generateContent`, {{
+                            method: "POST",
+                            headers: {{ "Content-Type": "application/json", "x-goog-api-key": API_KEY }},
+                            body: JSON.stringify({{
+                                contents: [{{ parts: [{{ text: prompt }}, {{ inline_data: {{ mime_type: "image/jpeg", data: b64 }} }}] }}],
+                                generationConfig: {{ responseMimeType: "application/json", temperature: 0.1 }}
+                            }})
                         }});
-                        if (Object.keys(freshCounts).length > 0) {{
-                            currentFrameCounts = freshCounts;
-                            updateSyncLinks();
+                        const data = await res.json();
+                        if (!res.ok) throw new Error("busy");
+                        const parsed = JSON.parse(data.candidates[0].content.parts[0].text);
+                        badge.innerText = "● LIVE LOCK (" + model + ")";
+                        badge.style.color = "#3FB950";
+                        let html = `<div style="color:#3FB950; font-weight:700; margin-bottom:6px;">✅ Live Shelf View (${{new Date().toLocaleTimeString()}})</div>`;
+                        if (parsed.items.length === 0) {{
+                            html += `<div style="color:#8B949E;">No product label in frame...</div>`;
+                        }} else {{
+                            parsed.items.forEach(it => {{
+                                html += `<div style="border-left:3px solid #3FB950; padding-left:8px; margin-bottom:6px;">
+                                    <span style="color:#58A6FF; font-family:monospace;">[${{it.sap_id}}]</span> <b>${{it.name}}</b> — In View: <b>${{it.count}}</b><br/>
+                                    <span style="color:#8B949E; font-size:12px;">Read: "${{it.text_read}}"</span>
+                                </div>`;
+                            }});
                         }}
-                    }}
-                    lastValidHtml = html;
-                    resultsEl.innerHTML = html;
-                }} else {{
-                    // Silent graceful hold — NEVER show scary red error box during temporary demand spikes
-                    badge.innerText = "⏳ CLOUD BUSY (HOLDING)";
-                    badge.style.color = "#D29922";
-                    if (!lastValidHtml) {{
-                        resultsEl.innerHTML = `<div style="color:#D29922; font-size:12px;">⏳ High cloud demand — automatically retrying on next sweep...</div>`;
-                    }}
+                        lastValidHtml = html;
+                        resultsEl.innerHTML = html;
+                        inFlight = false;
+                        return;
+                    }} catch (e) {{}}
                 }}
+                badge.innerText = "⏳ CLOUD BUSY (HOLDING)";
+                badge.style.color = "#D29922";
                 inFlight = false;
             }}
             </script>
             """
-            components.html(live_scanner_html, height=640)
+            components.html(live_scanner_html, height=455)
 
-        # --- MODE B: AISLE WALK-THROUGH VIDEO (100+ PRODUCTS) ---
-        elif audit_mode == "🎞️ Aisle Walk-Through Video (100+ Items)":
-            st.info("Record a 10–30 second walk-through video panning across an entire aisle (up to 100+ products). StockSense extracts key frames, deduplicates overlaps, and maps all SKUs to SAP in one click.")
+        # --- MODE C: AISLE WALK-THROUGH VIDEO (100+ PRODUCTS) ---
+        else:
+            st.info("Record a 10–30 second walk-through video panning across an entire aisle (up to 100+ products). StockSense extracts key frames, deduplicates overlaps, and syncs all SKUs to the Manager Dashboard.")
             vid_file = st.file_uploader("Upload Aisle Walk-Through Video (.mp4, .mov)", type=["mp4", "mov", "avi"])
             if vid_file is not None:
                 st.video(vid_file)
-                if st.button("🚀 Analyze Entire Aisle Video & Map to SAP", type="primary", use_container_width=True):
-                    with st.spinner("Extracting aisle keyframes & running multi-frame Bilingual OCR + Barcode mapping..."):
+                if st.button("🚀 Analyze Entire Aisle Video & Sync to SAP", type="primary", use_container_width=True):
+                    with st.spinner("Extracting aisle keyframes & running multi-frame Bilingual OCR..."):
                         try:
                             frames = extract_video_keyframes(vid_file.read(), max_frames=8)
                             if not frames:
@@ -794,213 +661,221 @@ with tab1:
                             else:
                                 first_ann, b_hits, scan_res = analyze_media_frames(
                                     frames,
-                                    st.session_state.inventory,
+                                    shared_db["inventory"],
                                     active_gemini_key,
                                     is_video_walkthrough=True,
                                 )
                                 st.session_state.last_annotated_img = first_ann
                                 st.session_state.last_barcode_hits = b_hits
-                                matched = apply_scan_results(scan_res, b_hits, accumulate=accumulate_mode)
-                                st.success(f"✅ Processed {len(frames)} aisle keyframes! Mapped {matched} catalog SKU(s) to SAP.")
+                                matched_list = update_shared_inventory(
+                                    scan_res, b_hits, accumulate=accumulate_mode, source_label="Aisle Video Audit"
+                                )
+                                st.success(f"✅ Video synced! Updated {len(matched_list)} SKU(s) on Manager Dashboard.")
                                 st.rerun()
                         except Exception as e:
                             st.error(f"Video audit error: {e}")
 
-        # --- MODE C: MULTI-SHELF PHOTO BATCH ---
-        else:
-            uploaded_files = st.file_uploader(
-                "Upload 1 or Multiple Wide Shelf Photos (JPG/PNG)",
-                type=["jpg", "jpeg", "png", "webp"],
-                accept_multiple_files=True,
-            )
-            if uploaded_files:
-                pil_batch = [Image.open(f) for f in uploaded_files]
-                st.image(pil_batch[0], caption=f"Loaded {len(pil_batch)} shelf photo(s) for batch OCR", use_container_width=True)
-                if st.button(f"🔍 Scan {len(pil_batch)} Photo(s) & Map to SAP", type="primary", use_container_width=True):
-                    with st.spinner(f"Scanning {len(pil_batch)} shelf image(s) with failover protection..."):
-                        try:
-                            first_ann, b_hits, scan_res = analyze_media_frames(
-                                pil_batch,
-                                st.session_state.inventory,
-                                active_gemini_key,
-                                is_video_walkthrough=(len(pil_batch) > 1),
-                            )
-                            st.session_state.last_annotated_img = first_ann
-                            st.session_state.last_barcode_hits = b_hits
-                            matched = apply_scan_results(scan_res, b_hits, accumulate=accumulate_mode)
-                            st.success(f"✅ Batch scan complete! Mapped {matched} catalog SKU(s) to SAP.")
-                            st.rerun()
-                        except Exception as e:
-                            st.error(f"Scan error: {e}")
-
-        # --- DISPLAY EVIDENCE LOG ---
-        if st.session_state.last_annotated_img is not None and st.session_state.last_barcode_hits:
-            st.image(
-                st.session_state.last_annotated_img,
-                caption="ZBar Local Barcode Detection Overlay (Mapped to SAP)",
-                use_container_width=True,
-            )
-
-        if st.session_state.scan_history:
-            st.markdown("#### 🧠 Bilingual OCR & SAP Audit Trail")
-            latest = st.session_state.scan_history[0]
-            st.caption(f"Last Sweep ({latest['timestamp']} via `{latest['model']}`): {latest['summary']}")
+        # --- DISPLAY LATEST AUDIT EVIDENCE ---
+        if shared_db["activity_log"]:
+            st.markdown("#### 🧠 Latest Field Scan Result")
+            latest = shared_db["activity_log"][0]
+            st.caption(f"{latest['timestamp']} • {latest['source']} (`{latest['model']}`)")
             for det in latest["items"]:
-                bc_tag = f" • Barcode: `{det['detected_barcode']}`" if det.get("detected_barcode") else ""
-                conf_pct = int(round(det.get("confidence", 0.95) * 100))
                 st.markdown(f"""
-                <div class="evidence-box">
+                <div class="feed-item">
                     <span class="sap-badge">{det['sap_id']}</span>
                     <strong style="color:#F0F6FC;">{det['product_name']}</strong>
-                    <span style="color:#3FB950; font-weight:700; float:right;">Count: {det['unit_count']} ({conf_pct}%)</span><br/>
-                    <span style="color:#8B949E;">Read Text (AR/EN): <em>"{det['extracted_text_ar_en']}"</em>{bc_tag}</span>
+                    <span style="color:#3FB950; font-weight:700; float:right;">+{det['unit_count']}</span><br/>
+                    <span style="color:#8B949E;">Read Text: <em>"{det['extracted_text_ar_en']}"</em></span>
                 </div>
                 """, unsafe_allow_html=True)
 
-    # --- RIGHT COLUMN: COMPACT SAP LEDGER WITH FILTER ---
+    # --- RIGHT COLUMN: MOBILE-CLEAN VERIFIED LEDGER ---
     with col_list:
-        st.subheader("2. SAP Material Verification & Sync")
-        st.caption(f"Last ERP Sync: {st.session_state.last_sync}")
-
-        filter_opt = st.radio(
-            "Filter Ledger View:",
-            ["All Catalog SKUs (42)", "Scanned / Verified Only"],
+        st.subheader("2. Live Store Verified Counts")
+        view_filter = st.radio(
+            "Show:",
+            ["Scanned Items Only", "All 42 Catalog SKUs"],
             horizontal=True,
             label_visibility="collapsed",
         )
-        search_q = st.text_input("🔎 Quick Search SKU, Product Name, or Arabic Label", placeholder="e.g. Osra, Almarai, Pepsi, حليب...")
+        search_q = st.text_input("🔎 Search Product (EN / AR / SAP ID)", placeholder="e.g. Laban, Almarai, حليب...")
 
-        with st.container(height=540):
-            shown_any = False
-            for idx, item in enumerate(st.session_state.inventory):
-                if filter_opt == "Scanned / Verified Only" and item["physical_qty"] == 0:
+        shown_count = 0
+        for idx, item in enumerate(shared_db["inventory"]):
+            if view_filter == "Scanned Items Only" and item["physical_qty"] == 0 and not search_q.strip():
+                continue
+            if search_q.strip():
+                q = search_q.strip().lower()
+                if q not in f"{item['sap_id']} {item['name']} {item['arabic_name']}".lower():
                     continue
-                if search_q.strip():
-                    q = search_q.strip().lower()
-                    haystack = f"{item['sap_id']} {item['name']} {item['arabic_name']} {item['category']}".lower()
-                    if q not in haystack:
-                        continue
 
-                shown_any = True
-                c_info, c_erp, c_phys = st.columns([2.3, 0.85, 1.15])
-                with c_info:
-                    st.markdown(
-                        f"**{item['name']}**  \n"
-                        f"<span style='color:#8B949E; font-size:0.8rem;'>{item['arabic_name']}</span>  \n"
-                        f"<span class='sap-badge'>{item['sap_id']}</span>"
-                        f"<span style='color:#8B949E; font-size:0.76rem;'>{item['category']} • {item['aisle']}</span>",
-                        unsafe_allow_html=True,
-                    )
-                with c_erp:
-                    st.markdown(
-                        f"<span style='color:#8B949E; font-size:0.76rem;'>SAP Qty</span><br/>"
-                        f"<strong style='font-size:1.1rem;'>{item['erp_qty']}</strong>",
-                        unsafe_allow_html=True,
-                    )
-                with c_phys:
-                    new_val = st.number_input(
-                        "Verified",
-                        min_value=0,
-                        max_value=5000,
-                        value=int(item["physical_qty"]),
-                        key=f"qty_{idx}",
-                    )
-                    st.session_state.inventory[idx]["physical_qty"] = new_val
-                st.divider()
+            shown_count += 1
+            c_info, c_erp, c_phys = st.columns([2.2, 0.85, 1.15])
+            with c_info:
+                st.markdown(
+                    f"**{item['name']}**  \n"
+                    f"<span style='color:#8B949E; font-size:0.8rem;'>{item['arabic_name']}</span>  \n"
+                    f"<span class='sap-badge'>{item['sap_id']}</span>",
+                    unsafe_allow_html=True,
+                )
+            with c_erp:
+                st.markdown(
+                    f"<span style='color:#8B949E; font-size:0.76rem;'>SAP</span><br/>"
+                    f"<strong>{item['erp_qty']}</strong>",
+                    unsafe_allow_html=True,
+                )
+            with c_phys:
+                new_val = st.number_input(
+                    "Verified",
+                    min_value=0,
+                    max_value=5000,
+                    value=int(item["physical_qty"]),
+                    key=f"qty_{idx}_{int(shared_db['last_updated_ts'])}",
+                )
+                if new_val != item["physical_qty"]:
+                    shared_db["inventory"][idx]["physical_qty"] = new_val
+                    shared_db["last_updated_ts"] = time.time()
+            st.divider()
 
-            if not shown_any:
-                st.info("No matching items in this filter yet. Scan an item or switch to 'All Catalog SKUs'.")
+        if shown_count == 0:
+            st.info("No items verified yet. Snap a product on the left—it will appear here and on the Manager's laptop immediately!")
 
-        if st.button("✅ Approve Audit & Sync to SAP S/4HANA", type="primary", use_container_width=True):
-            st.session_state.last_sync = datetime.now().strftime("%I:%M %p (Live SAP S/4HANA Synced)")
+        if st.button("✅ Finalize & Post Audit to SAP S/4HANA", type="primary", use_container_width=True):
+            shared_db["last_sync"] = datetime.now().strftime("%I:%M %p (Posted to SAP S/4HANA)")
             st.balloons()
-            st.success("SAP inventory ledger updated and automated replenishment alerts dispatched!")
+            st.success("Audit posted to SAP S/4HANA!")
 
 # ==========================================
-# TAB 2: EXECUTIVE SAP DASHBOARD (CHARTS FIRST, FULL TABLE BELOW)
+# TAB 2: AUTO-REFRESHING MANAGER EXECUTIVE DASHBOARD
 # ==========================================
 with tab2:
-    st.subheader("Executive SAP Discrepancy Analytics")
+    @st.fragment(run_every=4)
+    def render_live_manager_dashboard():
+        df = pd.DataFrame(shared_db["inventory"])
+        df["variance"] = df["physical_qty"] - df["erp_qty"]
+        df["abs_variance"] = df["variance"].abs()
+        df["rev_at_risk"] = df.apply(lambda r: abs(r["variance"]) * r["price"] if r["variance"] < 0 else 0.0, axis=1)
+        df["status"] = df.apply(
+            lambda r: "🔴 Stockout" if r["physical_qty"] == 0 else ("🟠 Low Stock" if r["physical_qty"] <= r["reorder_pt"] else "🟢 Optimal"),
+            axis=1,
+        )
 
-    # 1. TOP 5 CHARTS FIRST (Horizontal Bars = Clean, Zero Cut-Off Labels)
-    col_chart1, col_chart2 = st.columns(2, gap="large")
+        total_skus = len(df)
+        audited_skus = len(df[df["physical_qty"] > 0])
+        progress_pct = audited_skus / total_skus if total_skus > 0 else 0.0
+        total_erp = int(df["erp_qty"].sum())
+        total_phys = int(df["physical_qty"].sum())
+        accuracy = round((min(total_phys, total_erp) / total_erp) * 100, 1) if total_erp > 0 else 100.0
+        rev_risk = df["rev_at_risk"].sum()
+        alerts_count = len(df[df["physical_qty"] <= df["reorder_pt"]])
 
-    with col_chart1:
-        st.markdown('<div class="chart-card">', unsafe_allow_html=True)
-        st.markdown("#### 📊 Top 5 SKUs by Unit Variance (SAP vs. Vision)")
-        st.caption("Highlights the 5 products with the largest physical-to-ERP gap.")
-        top5_var_df = df.sort_values(by="abs_variance", ascending=False).head(5).copy()
-        top5_var_df["Short Label"] = top5_var_df["name"].apply(lambda x: x[:26] + "…" if len(x) > 27 else x)
-        chart1_data = top5_var_df.set_index("Short Label")[["erp_qty", "physical_qty"]]
-        chart1_data.columns = ["SAP Book Qty", "AI Verified Qty"]
-        st.bar_chart(chart1_data, color=["#3B475E", "#1F6FEB"], horizontal=True, height=290)
-        st.markdown('</div>', unsafe_allow_html=True)
+        # Live Progress Bar Header
+        st.markdown(f"### 📡 Live Store Audit Progress: **{audited_skus} / {total_skus} SKUs Verified** ({progress_pct*100:.0f}%)")
+        st.progress(progress_pct)
+        st.caption(f"Auto-syncing live from field auditors • Last SAP status: {shared_db['last_sync']}")
 
-    with col_chart2:
-        st.markdown('<div class="chart-card">', unsafe_allow_html=True)
-        st.markdown("#### 💸 Top 5 SKUs by Revenue at Risk (SAR)")
-        st.caption("Prioritizes shelf replenishment by highest financial exposure.")
-        top5_risk_df = df[df["rev_at_risk"] > 0].sort_values(by="rev_at_risk", ascending=False).head(5).copy()
-        if not top5_risk_df.empty:
-            top5_risk_df["Short Label"] = top5_risk_df["name"].apply(lambda x: x[:26] + "…" if len(x) > 27 else x)
-            chart2_data = top5_risk_df.set_index("Short Label")[["rev_at_risk"]]
-            chart2_data.columns = ["Revenue at Risk (SAR)"]
-            st.bar_chart(chart2_data, color="#F85149", horizontal=True, height=290)
-        else:
-            st.success("Zero phantom stock revenue leakage across all SKUs!")
-        st.markdown('</div>', unsafe_allow_html=True)
+        k1, k2, k3, k4 = st.columns(4)
+        k1.metric("Field Audit Progress", f"{audited_skus} / {total_skus} SKUs", f"{total_phys} physical units counted")
+        k2.metric("Inventory Accuracy", f"{accuracy}%", f"{total_phys - total_erp:+d} units vs SAP")
+        k3.metric("Revenue at Risk", f"SAR {rev_risk:,.2f}", "Phantom stock exposure", delta_color="inverse")
+        k4.metric("Replenishment Alerts", f"{alerts_count} SKUs", "SAP PO triggers")
 
-    st.write("")
+        # Live Field Activity Stream (Shows what teammates just scanned on their phones!)
+        if shared_db["activity_log"]:
+            with st.expander(f"📲 Live Field Auditor Feed ({len(shared_db['activity_log'])} scans received)", expanded=True):
+                for log in shared_db["activity_log"][:5]:
+                    matched_txt = ", ".join(log["matched"]) if log["matched"] else "Unmapped catalog item"
+                    st.markdown(
+                        f"<div class='feed-item'><strong>[{log['timestamp']}] {log['source']}:</strong> {matched_txt}</div>",
+                        unsafe_allow_html=True,
+                    )
 
-    # 2. FULL EXPANDABLE SAP INVENTORY TABLE BELOW CHARTS
-    st.subheader(f"Live Store Inventory & SAP Discrepancy Ledger ({len(df)} SKUs)")
+        st.write("")
 
-    f_col1, f_col2, f_col3 = st.columns([1.2, 1.2, 1.6])
-    with f_col1:
-        cat_list = ["All Categories"] + sorted(df["category"].unique().tolist())
-        sel_cat = st.selectbox("Filter by Category", cat_list)
-    with f_col2:
-        status_list = ["All Statuses", "🔴 Stockout", "🟠 Low Stock", "🟢 Optimal"]
-        sel_status = st.selectbox("Filter by Stock Status", status_list)
-    with f_col3:
-        tbl_search = st.text_input("Search SAP Material ID, Product (EN/AR), or Barcode", placeholder="Type to filter full SAP ledger...")
+        # 1. TOP 5 HORIZONTAL BAR CHARTS FIRST
+        col_chart1, col_chart2 = st.columns(2, gap="large")
 
-    filtered_df = df.copy()
-    if sel_cat != "All Categories":
-        filtered_df = filtered_df[filtered_df["category"] == sel_cat]
-    if sel_status != "All Statuses":
-        filtered_df = filtered_df[filtered_df["status"] == sel_status]
-    if tbl_search.strip():
-        q = tbl_search.strip().lower()
-        filtered_df = filtered_df[
-            filtered_df["sap_id"].str.lower().str.contains(q)
-            | filtered_df["name"].str.lower().str.contains(q)
-            | filtered_df["arabic_name"].str.lower().str.contains(q)
-            | filtered_df["ean13"].str.lower().str.contains(q)
+        with col_chart1:
+            st.markdown('<div class="chart-card">', unsafe_allow_html=True)
+            st.markdown("#### 📊 Top 5 SKUs by Unit Variance (SAP vs. Vision)")
+            st.caption("Highlights the 5 products with the largest physical-to-ERP gap.")
+            top5_var_df = df.sort_values(by="abs_variance", ascending=False).head(5).copy()
+            top5_var_df["Short Label"] = top5_var_df["name"].apply(lambda x: x[:28] + "…" if len(x) > 29 else x)
+            chart1_data = top5_var_df.set_index("Short Label")[["erp_qty", "physical_qty"]]
+            chart1_data.columns = ["SAP Book Qty", "AI Verified Qty"]
+            st.bar_chart(chart1_data, color=["#3B475E", "#1F6FEB"], horizontal=True, height=285)
+            st.markdown('</div>', unsafe_allow_html=True)
+
+        with col_chart2:
+            st.markdown('<div class="chart-card">', unsafe_allow_html=True)
+            st.markdown("#### 💸 Top 5 SKUs by Revenue at Risk (SAR)")
+            st.caption("Prioritizes shelf replenishment by highest financial exposure.")
+            top5_risk_df = df[df["rev_at_risk"] > 0].sort_values(by="rev_at_risk", ascending=False).head(5).copy()
+            if not top5_risk_df.empty:
+                top5_risk_df["Short Label"] = top5_risk_df["name"].apply(lambda x: x[:28] + "…" if len(x) > 29 else x)
+                chart2_data = top5_risk_df.set_index("Short Label")[["rev_at_risk"]]
+                chart2_data.columns = ["Revenue at Risk (SAR)"]
+                st.bar_chart(chart2_data, color="#F85149", horizontal=True, height=285)
+            else:
+                st.success("Zero phantom stock revenue leakage across all SKUs!")
+            st.markdown('</div>', unsafe_allow_html=True)
+
+        st.write("")
+
+        # 2. FULL SCROLLABLE SAP INVENTORY LEDGER BELOW CHARTS
+        st.subheader(f"Live Store Inventory & SAP Discrepancy Ledger ({len(df)} SKUs)")
+
+        f_col1, f_col2, f_col3 = st.columns([1.2, 1.2, 1.6])
+        with f_col1:
+            cat_list = ["All Categories"] + sorted(df["category"].unique().tolist())
+            sel_cat = st.selectbox("Filter by Category", cat_list, key="mgr_cat")
+        with f_col2:
+            status_list = ["All Statuses", "Audited (> 0 Verified)", "🔴 Stockout", "🟠 Low Stock", "🟢 Optimal"]
+            sel_status = st.selectbox("Filter by Stock Status", status_list, key="mgr_status")
+        with f_col3:
+            tbl_search = st.text_input("Search SAP Material ID, Product (EN/AR), or Barcode", placeholder="Type to filter full SAP ledger...", key="mgr_search")
+
+        filtered_df = df.copy()
+        if sel_cat != "All Categories":
+            filtered_df = filtered_df[filtered_df["category"] == sel_cat]
+        if sel_status == "Audited (> 0 Verified)":
+            filtered_df = filtered_df[filtered_df["physical_qty"] > 0]
+        elif sel_status != "All Statuses":
+            filtered_df = filtered_df[filtered_df["status"] == sel_status]
+        if tbl_search.strip():
+            q = tbl_search.strip().lower()
+            filtered_df = filtered_df[
+                filtered_df["sap_id"].str.lower().str.contains(q)
+                | filtered_df["name"].str.lower().str.contains(q)
+                | filtered_df["arabic_name"].str.lower().str.contains(q)
+                | filtered_df["ean13"].str.lower().str.contains(q)
+            ]
+
+        display_df = filtered_df[[
+            "sap_id", "ean13", "category", "name", "arabic_name", "aisle",
+            "erp_qty", "physical_qty", "variance", "rev_at_risk", "status"
+        ]].copy()
+        display_df.columns = [
+            "SAP Material ID",
+            "EAN-13 Barcode",
+            "Category",
+            "Product (EN)",
+            "Product (AR)",
+            "Location",
+            "SAP Qty",
+            "Verified Qty",
+            "Variance",
+            "Rev. at Risk (SAR)",
+            "Status",
         ]
+        st.dataframe(display_df, use_container_width=True, hide_index=True, height=620)
 
-    display_df = filtered_df[[
-        "sap_id", "ean13", "category", "name", "arabic_name", "aisle",
-        "erp_qty", "physical_qty", "variance", "rev_at_risk", "status"
-    ]].copy()
-    display_df.columns = [
-        "SAP Material ID",
-        "EAN-13 Barcode",
-        "Category",
-        "Product (EN)",
-        "Product (AR)",
-        "Location",
-        "SAP Qty",
-        "Verified Qty",
-        "Variance",
-        "Rev. at Risk (SAR)",
-        "Status",
-    ]
-    st.dataframe(display_df, use_container_width=True, hide_index=True, height=620)
+    render_live_manager_dashboard()
 
     # Enterprise SAP ERP Connector Expander
     with st.expander("🔌 Enterprise SAP S/4HANA Material Master Connector (MARA / MARD Feed)"):
-        st.caption("In enterprise deployment, StockSense ingests the customer's live SAP Material Master automatically via OData/BAPI. You can also upload a custom SAP CSV export here to test with any store catalog.")
+        st.caption("Upload a customer SAP CSV export to replace the store catalog across all connected field phones and dashboards.")
         sap_csv = st.file_uploader("Upload Custom SAP Material Master (.csv)", type=["csv"])
         if sap_csv is not None:
             try:
@@ -1023,8 +898,9 @@ with tab2:
                             "physical_qty": int(r.get("physical_qty", 0)),
                             "reorder_pt": int(r.get("reorder_pt", max(1, int(r["erp_qty"]) // 2))),
                         })
-                    st.session_state.inventory = new_inv
-                    st.success(f"Loaded {len(new_inv)} SKUs from SAP CSV!")
+                    shared_db["inventory"] = new_inv
+                    shared_db["last_updated_ts"] = time.time()
+                    st.success(f"Loaded {len(new_inv)} SKUs from SAP CSV across all devices!")
                     st.rerun()
                 else:
                     st.error(f"CSV must contain columns: {required_cols}")
@@ -1036,7 +912,11 @@ with tab2:
 # ==========================================
 with tab3:
     st.subheader("Zero-Friction Manager Alerts & SAP PO Triggers")
-    alert_items = df[df["physical_qty"] <= df["reorder_pt"]].sort_values(by="rev_at_risk", ascending=False)
+    df_alerts = pd.DataFrame(shared_db["inventory"])
+    df_alerts["variance"] = df_alerts["physical_qty"] - df_alerts["erp_qty"]
+    df_alerts["rev_at_risk"] = df_alerts.apply(lambda r: abs(r["variance"]) * r["price"] if r["variance"] < 0 else 0.0, axis=1)
+    alert_items = df_alerts[df_alerts["physical_qty"] <= df_alerts["reorder_pt"]].sort_values(by="rev_at_risk", ascending=False)
+
     if alert_items.empty:
         st.success("✅ All shelves are stocked above SAP reorder points.")
     else:
