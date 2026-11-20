@@ -1,4 +1,3 @@
-import base64
 import json
 import os
 import tempfile
@@ -122,7 +121,7 @@ DEFAULT_INVENTORY = [
         "sku": "SUG-OSR-1KG",
         "name": "Osra White Sugar 1kg",
         "arabic_name": "سكر الأسرة الأبيض الناعم 1 كجم",
-        "keywords": ["osra", "sugar", "أسرة", "الأسرة", "سكر", "قيراط"],
+        "keywords": ["osra", "al osra", "sugar", "أسرة", "الأسرة", "سكر", "قيراط"],
         "aisle": "Aisle B2",
         "price": 5.50,
         "erp_qty": 12,
@@ -257,7 +256,7 @@ with st.sidebar:
         help="Uses GEMINI_API_KEY from Streamlit Secrets automatically if left blank."
     )
     active_gemini_key = user_api_key.strip() or secret_key or os.environ.get("GEMINI_API_KEY", "")
-    st.caption(f"Active Model: **{st.session_state.active_model_used}** (Auto-Failover Enabled)")
+    st.caption(f"Active Model: **{st.session_state.active_model_used}**")
     if st.button("🔄 Reset Counts to Zero", use_container_width=True):
         st.session_state.inventory = [item.copy() for item in DEFAULT_INVENTORY]
         st.session_state.scan_history = []
@@ -311,12 +310,11 @@ def scan_local_barcodes(pil_image: Image.Image, catalog: list):
 
 
 def call_gemini_with_failover(client: genai.Client, contents: list) -> ShelfScanResult:
-    """Automatically fails over across models if any model returns 503 UNAVAILABLE or 429."""
-    model_chain = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-3.8-flash"]
+    model_chain = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash"]
     last_err = None
 
     for model_name in model_chain:
-        for attempt in range(2):
+        for _ in range(2):
             try:
                 response = client.models.generate_content(
                     model=model_name,
@@ -333,7 +331,7 @@ def call_gemini_with_failover(client: genai.Client, contents: list) -> ShelfScan
                 last_err = err
                 err_str = str(err)
                 if "503" in err_str or "UNAVAILABLE" in err_str or "429" in err_str:
-                    time.sleep(0.8)
+                    time.sleep(0.7)
                     continue
                 raise err
 
@@ -341,9 +339,8 @@ def call_gemini_with_failover(client: genai.Client, contents: list) -> ShelfScan
 
 
 def analyze_media_frames(pil_images: List[Image.Image], catalog: list, api_key: str, is_video_walkthrough: bool = False):
-    """Processes 1 shelf image or multiple key frames from a walk-through video."""
     if not api_key:
-        raise ValueError("Missing GEMINI_API_KEY. Add it in Streamlit Secrets or the left sidebar.")
+        raise ValueError("Missing GEMINI_API_KEY. Add your key in Streamlit Secrets or the left sidebar.")
 
     first_annotated, barcode_hits = scan_local_barcodes(pil_images[0], catalog)
     for extra_img in pil_images[1:]:
@@ -370,7 +367,7 @@ You are StockSense AI, an enterprise retail shelf auditing and SAP material mapp
 {walkthrough_instruction}
 
 Instructions:
-1. Read ALL visible Arabic and English text on every package, bottle, can, bag, or shelf price tag (including partial/back-of-pack text like 'أنقى قيراط سكر' or 'الوزن 1 كجم' -> Osra White Sugar 1kg).
+1. Read ALL visible Arabic and English text on every package, bottle, can, bag, or shelf price tag.
 2. Read any visible barcode digits (EAN-13 / UPC) if legible.
 3. Map each identified product to our SAP Material Master Catalog below:
 
@@ -379,7 +376,7 @@ Instructions:
 Local ZBar decoded barcodes: {json.dumps(barcode_hits)}
 
 Rules:
-- Match Arabic or English keywords accurately (e.g., 'أسرة' or 'سكر' or 'قيراط' or 'Osra' or 'Sugar' -> 'osra_sugar' / 'SAP-10045210'; 'المراعي' or 'حليب' or 'Almarai' -> 'almarai_milk' / 'SAP-10045411'; 'عافية' or 'Afia' -> 'afia_oil' / 'SAP-10045304'; 'طحين' or 'الكويت' or 'Kuwait' -> 'kuwait_flour' / 'SAP-10045218'; 'بيبسي' or 'Pepsi' -> 'pepsi_can' / 'SAP-10045502'; 'نوفا' or 'Nova' -> 'nova_water' / 'SAP-10045609').
+- Match Arabic or English keywords accurately (e.g., 'أسرة' or 'الأسرة' or 'سكر' or 'قيراط' or 'Al Osra' or 'Osra' or 'Sugar' -> 'osra_sugar' / 'SAP-10045210'; 'المراعي' or 'حليب' or 'Almarai' -> 'almarai_milk' / 'SAP-10045411'; 'عافية' or 'Afia' -> 'afia_oil' / 'SAP-10045304'; 'طحين' or 'الكويت' or 'Kuwait' -> 'kuwait_flour' / 'SAP-10045218'; 'بيبسي' or 'Pepsi' -> 'pepsi_can' / 'SAP-10045502'; 'نوفا' or 'Nova' -> 'nova_water' / 'SAP-10045609').
 - If a product is clearly readable on the packaging (e.g., another grocery brand) but not in the 6-item catalog above, set sku_key='unmapped_item', sap_id='SAP-UNMAPPED', and still report its exact English/Arabic name, extracted text, and count.
 """
 
@@ -389,7 +386,6 @@ Rules:
 
 
 def extract_video_keyframes(video_bytes: bytes, max_frames: int = 8) -> List[Image.Image]:
-    """Samples evenly spaced frames across an aisle walk-through video."""
     with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as tmp:
         tmp.write(video_bytes)
         tmp_path = tmp.name
@@ -414,7 +410,6 @@ def extract_video_keyframes(video_bytes: bytes, max_frames: int = 8) -> List[Ima
 
 
 def apply_scan_results(scan_result: ShelfScanResult, barcode_hits: list, accumulate: bool):
-    """Updates inventory counts either cumulatively (+ add to batch) or by overwriting."""
     detected_map = {}
     for det in scan_result.detections:
         detected_map[det.sku_key] = detected_map.get(det.sku_key, 0) + det.unit_count
@@ -527,16 +522,15 @@ with tab1:
                 for i in st.session_state.inventory
             ])
 
-            # Embedded HTML5 Live Rear-Camera + Direct Gemini Vision Live Loop (Zero page reload!)
             live_scanner_html = f"""
             <div style="background:#161B22; border:1px solid #262C36; border-radius:12px; padding:12px; font-family:sans-serif; color:#F0F6FC;">
                 <div style="position:relative; width:100%; border-radius:8px; overflow:hidden; background:#000;">
-                    <video id="cam" autoplay playsinline muted style="width:100%; max-height:340px; object-fit:cover; display:block;"></video>
+                    <video id="cam" autoplay playsinline muted style="width:100%; max-height:330px; object-fit:cover; display:block;"></video>
                     <div id="hud" style="position:absolute; top:10px; left:10px; right:10px; display:flex; justify-content:space-between; align-items:center;">
-                        <span id="badge" style="background:rgba(14,17,23,0.85); color:#3FB950; border:1px solid #3FB950; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:700;">
+                        <span id="badge" style="background:rgba(14,17,23,0.88); color:#3FB950; border:1px solid #3FB950; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:700;">
                             ● LIVE REAR CAMERA READY
                         </span>
-                        <span id="timer" style="background:rgba(14,17,23,0.85); color:#58A6FF; padding:4px 10px; border-radius:999px; font-size:12px;">
+                        <span id="timer" style="background:rgba(14,17,23,0.88); color:#58A6FF; padding:4px 10px; border-radius:999px; font-size:12px;">
                             Auto-Scan: OFF
                         </span>
                     </div>
@@ -552,7 +546,7 @@ with tab1:
                     </button>
                 </div>
 
-                <div id="liveResults" style="margin-top:12px; background:#0E1117; border:1px solid #262C36; border-radius:8px; padding:10px; max-height:240px; overflow-y:auto; font-size:13px;">
+                <div id="liveResults" style="margin-top:12px; background:#0E1117; border:1px solid #262C36; border-radius:8px; padding:12px; min-height:110px; max-height:260px; overflow-y:auto; font-size:13px;">
                     <span style="color:#8B949E;">Point camera at Arabic/English products (e.g., Osra Sugar, Almarai, Pepsi) and tap <b>Start Live Continuous AI Scan</b>...</span>
                 </div>
             </div>
@@ -580,8 +574,9 @@ with tab1:
                     }});
                     video.srcObject = stream;
                 }} catch (err) {{
-                    badge.innerText = "⚠ Camera permission blocked";
+                    badge.innerText = "⚠ Camera blocked";
                     badge.style.color = "#F85149";
+                    resultsEl.innerHTML = `<span style="color:#F85149;">Camera error: ${{err.message}}</span>`;
                 }}
             }}
             startCamera();
@@ -591,7 +586,7 @@ with tab1:
                 if (scanning) {{
                     toggleBtn.innerText = "⏸ Pause Live AI Scan";
                     toggleBtn.style.background = "#DA3633";
-                    timerEl.innerText = "Auto-Scan: ON (Every 3.5s)";
+                    timerEl.innerText = "Auto-Scan: ON (3.5s)";
                     scanSingleNow();
                     intervalId = setInterval(scanSingleNow, 3500);
                 }} else {{
@@ -603,11 +598,14 @@ with tab1:
             }}
 
             async function callGeminiModel(model, base64Jpeg) {{
-                const prompt = `You are StockSense AI. Read ALL Arabic and English text and barcodes on visible products and map them to this SAP catalog: ${{JSON.stringify(CATALOG)}}. Return ONLY valid JSON: {{"items": [{{"sap_id": "...", "name": "...", "text_read": "...", "count": 1}}]}}`;
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/${{model}}:generateContent?key=${{API_KEY}}`;
+                const prompt = `You are StockSense AI. Read ALL visible Arabic and English text and barcodes on products in this image and map them to this SAP catalog: ${{JSON.stringify(CATALOG)}}. If a product is visible on screen, extract its Arabic/English words and match its SAP ID. Return ONLY valid JSON: {{"items": [{{"sap_id": "...", "name": "...", "text_read": "...", "count": 1}}]}}`;
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/${{model}}:generateContent`;
                 const res = await fetch(url, {{
                     method: "POST",
-                    headers: {{ "Content-Type": "application/json" }},
+                    headers: {{
+                        "Content-Type": "application/json",
+                        "x-goog-api-key": API_KEY
+                    }},
                     body: JSON.stringify({{
                         contents: [{{
                             parts: [
@@ -618,20 +616,28 @@ with tab1:
                         generationConfig: {{ responseMimeType: "application/json", temperature: 0.1 }}
                     }})
                 }});
-                if (!res.ok) throw new Error("HTTP " + res.status);
                 const data = await res.json();
+                if (!res.ok) {{
+                    const msg = data?.error?.message || ("HTTP " + res.status);
+                    throw new Error(msg);
+                }}
                 const rawText = data.candidates[0].content.parts[0].text;
                 return JSON.parse(rawText);
             }}
 
             async function scanSingleNow() {{
-                if (inFlight || !video.videoWidth) return;
+                if (inFlight) return;
+                if (!video.videoWidth) {{
+                    resultsEl.innerHTML = "<span style='color:#D29922;'>Waiting for camera stream to initialize...</span>";
+                    return;
+                }}
                 if (!API_KEY) {{
                     resultsEl.innerHTML = "<span style='color:#F85149;'>Missing GEMINI_API_KEY in Streamlit Secrets.</span>";
                     return;
                 }}
+
                 inFlight = true;
-                badge.innerText = "🔍 READING LABELS & BARCODES...";
+                badge.innerText = "🔍 READING LABELS...";
                 badge.style.color = "#58A6FF";
 
                 canvas.width = 768;
@@ -639,9 +645,10 @@ with tab1:
                 canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
                 const b64 = canvas.toDataURL('image/jpeg', 0.82).split(',')[1];
 
-                const models = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-3.8-flash"];
+                const models = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash"];
                 let parsed = null;
                 let usedModel = "";
+                let lastErrorMsg = "";
 
                 for (const m of models) {{
                     try {{
@@ -649,7 +656,7 @@ with tab1:
                         usedModel = m;
                         break;
                     }} catch (e) {{
-                        continue;
+                        lastErrorMsg = `${{m}}: ${{e.message}}`;
                     }}
                 }}
 
@@ -658,14 +665,14 @@ with tab1:
                     badge.style.color = "#3FB950";
                     let html = `<div style="color:#3FB950; font-weight:700; margin-bottom:6px;">✅ Live Frame Decoded (${{new Date().toLocaleTimeString()}})</div>`;
                     if (parsed.items.length === 0) {{
-                        html += `<div style="color:#8B949E;">Pan camera closer to Arabic/English product text...</div>`;
+                        html += `<div style="color:#8B949E;">No product label detected in this frame — pan camera toward product text...</div>`;
                     }} else {{
                         parsed.items.forEach(it => {{
                             const key = it.sap_id + " | " + it.name;
                             runningTotals[key] = (runningTotals[key] || 0) + (it.count || 1);
                             html += `<div style="border-left:3px solid #3FB950; padding-left:8px; margin-bottom:6px;">
-                                <span style="color:#58A6FF; font-family:monospace;">[${{it.sap_id}}]</span> <b>${{it.name}}</b> — Frame Qty: <b>${{it.count}}</b><br/>
-                                <span style="color:#8B949E; font-size:12px;">Read: "${{it.text_read}}"</span>
+                                <span style="color:#58A6FF; font-family:monospace;">[${{it.sap_id}}]</span> <b>${{it.name}}</b> — Qty: <b>${{it.count}}</b><br/>
+                                <span style="color:#8B949E; font-size:12px;">Read Text: "${{it.text_read}}"</span>
                             </div>`;
                         }});
                     }}
@@ -675,14 +682,15 @@ with tab1:
                     }}
                     resultsEl.innerHTML = html;
                 }} else {{
-                    badge.innerText = "⚠ Retrying next frame...";
-                    badge.style.color = "#D29922";
+                    badge.innerText = "⚠ API Error";
+                    badge.style.color = "#F85149";
+                    resultsEl.innerHTML = `<div style="color:#F85149; font-weight:700;">Scan Failed:</div><div style="color:#FFA657; font-size:12px; margin-top:4px;">${{lastErrorMsg}}</div>`;
                 }}
                 inFlight = false;
             }}
             </script>
             """
-            components.html(live_scanner_html, height=490)
+            components.html(live_scanner_html, height=540)
 
         # --- MODE B: AISLE WALK-THROUGH VIDEO (100+ PRODUCTS) ---
         elif audit_mode == "🎞️ Aisle Walk-Through Video (100+ Items)":
