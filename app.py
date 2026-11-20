@@ -23,7 +23,7 @@ st.markdown("""
         background-color: #0E1117;
     }
     .block-container {
-        padding-top: 1.2rem;
+        padding-top: 3.2rem;
         padding-bottom: 2.5rem;
         max-width: 1280px;
     }
@@ -413,6 +413,13 @@ with tab_exec:
     low_or_oos_count = len(df_curr[df_curr["Visual_Count"] <= df_curr["ROP"]])
     discrepancy_skus = len(df_curr[df_curr["Variance"] != 0])
 
+    # Dynamic Audit Time Saved Calculation (15s/unit manual vs 3s/unit AI)
+    total_units_audited = int(df_curr["Visual_Count"].sum())
+    manual_mins = total_units_audited * 0.25
+    ai_mins = total_units_audited * 0.05
+    mins_saved = max(0.0, manual_mins - ai_mins)
+    pct_faster = ((manual_mins - ai_mins) / manual_mins * 100) if manual_mins > 0 else 0
+
     # Top 4 KPI Cards
     k1, k2, k3, k4 = st.columns(4)
     k1.markdown(f"""
@@ -442,8 +449,8 @@ with tab_exec:
     k4.markdown(f"""
         <div class="metric-card">
             <div class="metric-title">Est. Audit Time Saved</div>
-            <div class="metric-value">78% <span style="font-size:1rem; color:#3FB950;">Faster</span></div>
-            <div class="metric-delta" style="color:#3FB950;">~4.5 hrs/week per store</div>
+            <div class="metric-value">{mins_saved:.1f} <span style="font-size:1rem; color:#3FB950;">mins</span></div>
+            <div class="metric-delta" style="color:#3FB950;">{pct_faster:.0f}% faster across {total_units_audited} units</div>
         </div>
     """, unsafe_allow_html=True)
 
