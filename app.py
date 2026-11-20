@@ -245,6 +245,24 @@ if "last_barcode_hits" not in st.session_state:
 if "active_model_used" not in st.session_state:
     st.session_state.active_model_used = "gemini-3.5-flash-lite"
 
+# --- HANDLE LIVE BRIDGE SYNC FROM QUERY PARAMS ---
+if "sync_payload" in st.query_params:
+    try:
+        payload_data = json.loads(st.query_params["sync_payload"])
+        mode_flag = st.query_params.get("sync_mode", "set")
+        for item in st.session_state.inventory:
+            sap = item["sap_id"]
+            if sap in payload_data:
+                qty_val = int(payload_data[sap])
+                if mode_flag == "add":
+                    item["physical_qty"] += qty_val
+                else:
+                    item["physical_qty"] = qty_val
+        st.query_params.clear()
+        st.toast("✅ Live camera counts synced to SAP Material Verification!", icon="📦")
+    except Exception:
+        st.query_params.clear()
+
 # --- SIDEBAR SETTINGS ---
 with st.sidebar:
     st.markdown("### ⚙️ Engine Configuration")
@@ -503,13 +521,13 @@ with tab1:
         )
 
         accumulate_mode = st.checkbox(
-            "➕ Cumulative Batch Mode (Add newly scanned items to existing shelf totals instead of overwriting)",
+            "➕ Cumulative Batch Mode (Add newly scanned bays to existing SAP totals instead of overwriting)",
             value=True,
         )
 
-        # --- MODE A: LIVE CONTINUOUS REAR-CAMERA AUTO-SCANNER ---
+        # --- MODE A: DE-DUPLICATED LIVE REAR-CAMERA SCANNER ---
         if audit_mode == "🎥 Live Rear-Camera Auto-Scanner":
-            st.caption("Live rear-camera viewfinder with real-time frame streaming & automatic 3-second AI sweeps.")
+            st.caption("Live rear-camera viewfinder: shows real-time shelf count in view without double-counting stationary items, then pushes directly to SAP.")
             catalog_json = json.dumps([
                 {
                     "sku_key": i["sku_key"],
@@ -525,7 +543,7 @@ with tab1:
             live_scanner_html = f"""
             <div style="background:#161B22; border:1px solid #262C36; border-radius:12px; padding:12px; font-family:sans-serif; color:#F0F6FC;">
                 <div style="position:relative; width:100%; border-radius:8px; overflow:hidden; background:#000;">
-                    <video id="cam" autoplay playsinline muted style="width:100%; max-height:330px; object-fit:cover; display:block;"></video>
+                    <video id="cam" autoplay playsinline muted style="width:100%; max-height:310px; object-fit:cover; display:block;"></video>
                     <div id="hud" style="position:absolute; top:10px; left:10px; right:10px; display:flex; justify-content:space-between; align-items:center;">
                         <span id="badge" style="background:rgba(14,17,23,0.88); color:#3FB950; border:1px solid #3FB950; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:700;">
                             ● LIVE REAR CAMERA READY
@@ -539,15 +557,24 @@ with tab1:
 
                 <div style="display:flex; gap:8px; margin-top:10px;">
                     <button id="toggleBtn" onclick="toggleAutoScan()" style="flex:1; background:#1F6FEB; color:#fff; border:none; padding:10px; border-radius:8px; font-weight:700; cursor:pointer;">
-                        ▶ Start Live Continuous AI Scan
+                        ▶ Start Live AI Viewfinder
                     </button>
-                    <button onclick="scanSingleNow()" style="background:#21262D; color:#F0F6FC; border:1px solid #30363D; padding:10px 14px; border-radius:8px; font-weight:600; cursor:pointer;">
-                        ⚡ Scan Frame Now
+                    <button onclick="scanSingleNow()" style="background:#21262D; color:#F0F6FC; border:1px solid #30363D; padding:10px 12px; border-radius:8px; font-weight:600; cursor:pointer;">
+                        ⚡ Scan Now
                     </button>
                 </div>
 
-                <div id="liveResults" style="margin-top:12px; background:#0E1117; border:1px solid #262C36; border-radius:8px; padding:12px; min-height:110px; max-height:260px; overflow-y:auto; font-size:13px;">
-                    <span style="color:#8B949E;">Point camera at Arabic/English products (e.g., Osra Sugar, Almarai, Pepsi) and tap <b>Start Live Continuous AI Scan</b>...</span>
+                <div id="liveResults" style="margin-top:10px; background:#0E1117; border:1px solid #262C36; border-radius:8px; padding:12px; min-height:110px; max-height:220px; overflow-y:auto; font-size:13px;">
+                    <span style="color:#8B949E;">Point camera at products and tap <b>Start Live AI Viewfinder</b>...</span>
+                </div>
+
+                <div style="display:flex; gap:8px; margin-top:10px;">
+                    <button onclick="pushToSAP('set')" style="flex:1; background:#238636; color:#fff; border:none; padding:10px; border-radius:8px; font-weight:700; cursor:pointer;">
+                        📥 Set SAP Qty from Live View
+                    </button>
+                    <button onclick="pushToSAP('add')" style="flex:1; background:#1F6FEB; color:#fff; border:none; padding:10px; border-radius:8px; font-weight:700; cursor:pointer;">
+                        ➕ Add Bay to SAP Total
+                    </button>
                 </div>
             </div>
 
@@ -564,7 +591,8 @@ with tab1:
             let scanning = false;
             let intervalId = null;
             let inFlight = false;
-            let runningTotals = {{}};
+            let currentFrameCounts = {{}};
+            let currentFrameDetails = [];
 
             async function startCamera() {{
                 try {{
@@ -584,21 +612,32 @@ with tab1:
             function toggleAutoScan() {{
                 scanning = !scanning;
                 if (scanning) {{
-                    toggleBtn.innerText = "⏸ Pause Live AI Scan";
+                    toggleBtn.innerText = "⏸ Pause Live Viewfinder";
                     toggleBtn.style.background = "#DA3633";
                     timerEl.innerText = "Auto-Scan: ON (3.0s)";
                     scanSingleNow();
                     intervalId = setInterval(scanSingleNow, 3000);
                 }} else {{
-                    toggleBtn.innerText = "▶ Resume Live Continuous AI Scan";
+                    toggleBtn.innerText = "▶ Resume Live AI Viewfinder";
                     toggleBtn.style.background = "#1F6FEB";
                     timerEl.innerText = "Auto-Scan: PAUSED";
                     clearInterval(intervalId);
                 }}
             }}
 
+            function pushToSAP(mode) {{
+                if (Object.keys(currentFrameCounts).length === 0) {{
+                    alert("No product detected in the current frame yet. Point at a product first!");
+                    return;
+                }}
+                const url = new URL(window.parent.location.href);
+                url.searchParams.set("sync_payload", JSON.stringify(currentFrameCounts));
+                url.searchParams.set("sync_mode", mode);
+                window.parent.location.href = url.toString();
+            }}
+
             async function callGeminiModel(model, base64Jpeg) {{
-                const prompt = `You are StockSense AI. Read ALL visible Arabic and English text and barcodes on products in this image and map them to this SAP catalog: ${{JSON.stringify(CATALOG)}}. If a product is visible on screen, extract its Arabic/English words and match its SAP ID. Return ONLY valid JSON: {{"items": [{{"sap_id": "...", "name": "...", "text_read": "...", "count": 1}}]}}`;
+                const prompt = `You are StockSense AI. Count the EXACT number of physical units currently visible in this single frame and map them to this SAP catalog: ${{JSON.stringify(CATALOG)}}. Do NOT guess extra items; count only what is visibly in front of the camera right now. Return ONLY valid JSON: {{"items": [{{"sap_id": "...", "name": "...", "text_read": "...", "count": 1}}]}}`;
                 const url = `https://generativelanguage.googleapis.com/v1beta/models/${{model}}:generateContent`;
                 const res = await fetch(url, {{
                     method: "POST",
@@ -627,10 +666,7 @@ with tab1:
 
             async function scanSingleNow() {{
                 if (inFlight) return;
-                if (!video.videoWidth) {{
-                    resultsEl.innerHTML = "<span style='color:#D29922;'>Waiting for camera stream to initialize...</span>";
-                    return;
-                }}
+                if (!video.videoWidth) return;
                 if (!API_KEY) {{
                     resultsEl.innerHTML = "<span style='color:#F85149;'>Missing GEMINI_API_KEY in Streamlit Secrets.</span>";
                     return;
@@ -663,22 +699,23 @@ with tab1:
                 if (parsed && parsed.items) {{
                     badge.innerText = "● LIVE LOCK (" + usedModel + ")";
                     badge.style.color = "#3FB950";
-                    let html = `<div style="color:#3FB950; font-weight:700; margin-bottom:6px;">✅ Live Frame Decoded (${{new Date().toLocaleTimeString()}})</div>`;
+
+                    // Replace current frame count (prevents stationary double-counting!)
+                    let freshCounts = {{}};
+                    let html = `<div style="color:#3FB950; font-weight:700; margin-bottom:6px;">✅ Live Shelf View (${{new Date().toLocaleTimeString()}})</div>`;
+
                     if (parsed.items.length === 0) {{
-                        html += `<div style="color:#8B949E;">No product label detected in this frame — pan camera toward product text...</div>`;
+                        html += `<div style="color:#8B949E;">No product label in frame — point at a product or tap <b>Add Bay to SAP Total</b> after scanning...</div>`;
                     }} else {{
+                        currentFrameDetails = parsed.items;
                         parsed.items.forEach(it => {{
-                            const key = it.sap_id + " | " + it.name;
-                            runningTotals[key] = (runningTotals[key] || 0) + (it.count || 1);
+                            freshCounts[it.sap_id] = (freshCounts[it.sap_id] || 0) + (it.count || 1);
                             html += `<div style="border-left:3px solid #3FB950; padding-left:8px; margin-bottom:6px;">
-                                <span style="color:#58A6FF; font-family:monospace;">[${{it.sap_id}}]</span> <b>${{it.name}}</b> — Qty: <b>${{it.count}}</b><br/>
+                                <span style="color:#58A6FF; font-family:monospace;">[${{it.sap_id}}]</span> <b>${{it.name}}</b> — In View: <b>${{it.count}} unit(s)</b><br/>
                                 <span style="color:#8B949E; font-size:12px;">Read Text: "${{it.text_read}}"</span>
                             </div>`;
                         }});
-                    }}
-                    html += `<hr style="border-color:#262C36; margin:8px 0;"/><div style="color:#F0F6FC; font-weight:700;">Cumulative Live Session Tally:</div>`;
-                    for (const [k, v] of Object.entries(runningTotals)) {{
-                        html += `<div style="color:#58A6FF; font-size:12px;">• ${{k}}: <b>${{v}} units</b></div>`;
+                        currentFrameCounts = freshCounts;
                     }}
                     resultsEl.innerHTML = html;
                 }} else {{
@@ -690,7 +727,7 @@ with tab1:
             }}
             </script>
             """
-            components.html(live_scanner_html, height=540)
+            components.html(live_scanner_html, height=565)
 
         # --- MODE B: AISLE WALK-THROUGH VIDEO (100+ PRODUCTS) ---
         elif audit_mode == "🎞️ Aisle Walk-Through Video (100+ Items)":
