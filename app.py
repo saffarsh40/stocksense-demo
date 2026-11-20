@@ -244,12 +244,15 @@ if "last_barcode_hits" not in st.session_state:
     st.session_state.last_barcode_hits = []
 if "active_model_used" not in st.session_state:
     st.session_state.active_model_used = "gemini-3.5-flash-lite"
+if "sync_banner_msg" not in st.session_state:
+    st.session_state.sync_banner_msg = ""
 
 # --- HANDLE LIVE BRIDGE SYNC FROM QUERY PARAMS ---
 if "sync_payload" in st.query_params:
     try:
         payload_data = json.loads(st.query_params["sync_payload"])
         mode_flag = st.query_params.get("sync_mode", "set")
+        updated_names = []
         for item in st.session_state.inventory:
             sap = item["sap_id"]
             if sap in payload_data:
@@ -258,8 +261,11 @@ if "sync_payload" in st.query_params:
                     item["physical_qty"] += qty_val
                 else:
                     item["physical_qty"] = qty_val
+                updated_names.append(f"{item['name']} → {item['physical_qty']} unit(s)")
         st.query_params.clear()
-        st.toast("✅ Live camera counts synced to SAP Material Verification!", icon="📦")
+        if updated_names:
+            st.session_state.sync_banner_msg = "✅ Synced to SAP Ledger: " + ", ".join(updated_names)
+        st.rerun()
     except Exception:
         st.query_params.clear()
 
@@ -280,6 +286,7 @@ with st.sidebar:
         st.session_state.scan_history = []
         st.session_state.last_annotated_img = None
         st.session_state.last_barcode_hits = []
+        st.session_state.sync_banner_msg = ""
         st.rerun()
 
 # --- BARCODE & MULTI-MODEL RESILIENT VISION ENGINE ---
@@ -471,6 +478,9 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
+if st.session_state.sync_banner_msg:
+    st.success(st.session_state.sync_banner_msg)
+
 # --- CALCULATE LIVE METRICS ---
 df = pd.DataFrame(st.session_state.inventory)
 df["variance"] = df["physical_qty"] - df["erp_qty"]
@@ -527,7 +537,7 @@ with tab1:
 
         # --- MODE A: DE-DUPLICATED LIVE REAR-CAMERA SCANNER ---
         if audit_mode == "🎥 Live Rear-Camera Auto-Scanner":
-            st.caption("Live rear-camera viewfinder: shows real-time shelf count in view without double-counting stationary items, then pushes directly to SAP.")
+            st.caption("Point at products to see live SAP identification, then tap a green/blue button below to update your SAP ledger.")
             catalog_json = json.dumps([
                 {
                     "sku_key": i["sku_key"],
@@ -541,9 +551,9 @@ with tab1:
             ])
 
             live_scanner_html = f"""
-            <div style="background:#161B22; border:1px solid #262C36; border-radius:12px; padding:12px; font-family:sans-serif; color:#F0F6FC;">
+            <div style="background:#161B22; border:1px solid #262C36; border-radius:12px; padding:12px; font-family:sans-serif; color:#F0F6FC; box-sizing:border-box;">
                 <div style="position:relative; width:100%; border-radius:8px; overflow:hidden; background:#000;">
-                    <video id="cam" autoplay playsinline muted style="width:100%; max-height:310px; object-fit:cover; display:block;"></video>
+                    <video id="cam" autoplay playsinline muted style="width:100%; max-height:270px; object-fit:cover; display:block;"></video>
                     <div id="hud" style="position:absolute; top:10px; left:10px; right:10px; display:flex; justify-content:space-between; align-items:center;">
                         <span id="badge" style="background:rgba(14,17,23,0.88); color:#3FB950; border:1px solid #3FB950; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:700;">
                             ● LIVE REAR CAMERA READY
@@ -556,25 +566,25 @@ with tab1:
                 <canvas id="canvas" style="display:none;"></canvas>
 
                 <div style="display:flex; gap:8px; margin-top:10px;">
-                    <button id="toggleBtn" onclick="toggleAutoScan()" style="flex:1; background:#1F6FEB; color:#fff; border:none; padding:10px; border-radius:8px; font-weight:700; cursor:pointer;">
+                    <button id="toggleBtn" onclick="toggleAutoScan()" style="flex:1; background:#1F6FEB; color:#fff; border:none; padding:11px; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer;">
                         ▶ Start Live AI Viewfinder
                     </button>
-                    <button onclick="scanSingleNow()" style="background:#21262D; color:#F0F6FC; border:1px solid #30363D; padding:10px 12px; border-radius:8px; font-weight:600; cursor:pointer;">
+                    <button onclick="scanSingleNow()" style="background:#21262D; color:#F0F6FC; border:1px solid #30363D; padding:11px 14px; border-radius:8px; font-weight:600; font-size:13px; cursor:pointer;">
                         ⚡ Scan Now
                     </button>
                 </div>
 
-                <div id="liveResults" style="margin-top:10px; background:#0E1117; border:1px solid #262C36; border-radius:8px; padding:12px; min-height:110px; max-height:220px; overflow-y:auto; font-size:13px;">
+                <div id="liveResults" style="margin-top:10px; background:#0E1117; border:1px solid #262C36; border-radius:8px; padding:12px; min-height:95px; max-height:175px; overflow-y:auto; font-size:13px;">
                     <span style="color:#8B949E;">Point camera at products and tap <b>Start Live AI Viewfinder</b>...</span>
                 </div>
 
-                <div style="display:flex; gap:8px; margin-top:10px;">
-                    <button onclick="pushToSAP('set')" style="flex:1; background:#238636; color:#fff; border:none; padding:10px; border-radius:8px; font-weight:700; cursor:pointer;">
-                        📥 Set SAP Qty from Live View
-                    </button>
-                    <button onclick="pushToSAP('add')" style="flex:1; background:#1F6FEB; color:#fff; border:none; padding:10px; border-radius:8px; font-weight:700; cursor:pointer;">
-                        ➕ Add Bay to SAP Total
-                    </button>
+                <div style="display:flex; flex-direction:column; gap:8px; margin-top:12px;">
+                    <a id="syncSetLink" target="_top" href="#" onclick="return checkBeforeSync()" style="display:block; text-align:center; text-decoration:none; background:#238636; color:#FFFFFF; padding:12px; border-radius:8px; font-weight:700; font-size:14px;">
+                        📥 Update SAP Ledger with Live Count
+                    </a>
+                    <a id="syncAddLink" target="_top" href="#" onclick="return checkBeforeSync()" style="display:block; text-align:center; text-decoration:none; background:#1F6FEB; color:#FFFFFF; padding:12px; border-radius:8px; font-weight:700; font-size:14px;">
+                        ➕ Add Live Count to Existing SAP Total
+                    </a>
                 </div>
             </div>
 
@@ -587,12 +597,38 @@ with tab1:
             const timerEl = document.getElementById('timer');
             const resultsEl = document.getElementById('liveResults');
             const toggleBtn = document.getElementById('toggleBtn');
+            const syncSetLink = document.getElementById('syncSetLink');
+            const syncAddLink = document.getElementById('syncAddLink');
 
             let scanning = false;
             let intervalId = null;
             let inFlight = false;
             let currentFrameCounts = {{}};
-            let currentFrameDetails = [];
+
+            function getParentBaseUrl() {{
+                try {{
+                    if (document.referrer) {{
+                        const u = new URL(document.referrer);
+                        return u.origin + u.pathname;
+                    }}
+                }} catch (e) {{}}
+                return window.location.origin + window.location.pathname;
+            }}
+
+            function updateSyncLinks() {{
+                const base = getParentBaseUrl();
+                const payload = encodeURIComponent(JSON.stringify(currentFrameCounts));
+                syncSetLink.href = `${{base}}?sync_payload=${{payload}}&sync_mode=set`;
+                syncAddLink.href = `${{base}}?sync_payload=${{payload}}&sync_mode=add`;
+            }}
+
+            function checkBeforeSync() {{
+                if (Object.keys(currentFrameCounts).length === 0) {{
+                    alert("Scan a product first so a count appears in the box above!");
+                    return false;
+                }}
+                return true;
+            }}
 
             async function startCamera() {{
                 try {{
@@ -623,17 +659,6 @@ with tab1:
                     timerEl.innerText = "Auto-Scan: PAUSED";
                     clearInterval(intervalId);
                 }}
-            }}
-
-            function pushToSAP(mode) {{
-                if (Object.keys(currentFrameCounts).length === 0) {{
-                    alert("No product detected in the current frame yet. Point at a product first!");
-                    return;
-                }}
-                const url = new URL(window.parent.location.href);
-                url.searchParams.set("sync_payload", JSON.stringify(currentFrameCounts));
-                url.searchParams.set("sync_mode", mode);
-                window.parent.location.href = url.toString();
             }}
 
             async function callGeminiModel(model, base64Jpeg) {{
@@ -700,14 +725,12 @@ with tab1:
                     badge.innerText = "● LIVE LOCK (" + usedModel + ")";
                     badge.style.color = "#3FB950";
 
-                    // Replace current frame count (prevents stationary double-counting!)
                     let freshCounts = {{}};
                     let html = `<div style="color:#3FB950; font-weight:700; margin-bottom:6px;">✅ Live Shelf View (${{new Date().toLocaleTimeString()}})</div>`;
 
                     if (parsed.items.length === 0) {{
-                        html += `<div style="color:#8B949E;">No product label in frame — point at a product or tap <b>Add Bay to SAP Total</b> after scanning...</div>`;
+                        html += `<div style="color:#8B949E;">No product label in frame — point at a product...</div>`;
                     }} else {{
-                        currentFrameDetails = parsed.items;
                         parsed.items.forEach(it => {{
                             freshCounts[it.sap_id] = (freshCounts[it.sap_id] || 0) + (it.count || 1);
                             html += `<div style="border-left:3px solid #3FB950; padding-left:8px; margin-bottom:6px;">
@@ -716,6 +739,7 @@ with tab1:
                             </div>`;
                         }});
                         currentFrameCounts = freshCounts;
+                        updateSyncLinks();
                     }}
                     resultsEl.innerHTML = html;
                 }} else {{
@@ -727,7 +751,7 @@ with tab1:
             }}
             </script>
             """
-            components.html(live_scanner_html, height=565)
+            components.html(live_scanner_html, height=640)
 
         # --- MODE B: AISLE WALK-THROUGH VIDEO (100+ PRODUCTS) ---
         elif audit_mode == "🎞️ Aisle Walk-Through Video (100+ Items)":
