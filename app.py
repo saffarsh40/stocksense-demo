@@ -124,6 +124,263 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# --- REGISTER TRUE TWO-WAY LIVE SCANNER COMPONENT ---
+@st.cache_resource
+def get_live_scanner_component():
+    comp_dir = os.path.join(tempfile.gettempdir(), "stocksense_live_scanner_v3")
+    os.makedirs(comp_dir, exist_ok=True)
+    index_path = os.path.join(comp_dir, "index.html")
+    html_code = """<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  body { margin: 0; padding: 0; background: transparent; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #F0F6FC; }
+  .card { background:#151B26; border:1px solid #263042; border-radius:12px; padding:12px; box-sizing:border-box; }
+  .vid-wrap { position:relative; width:100%; border-radius:8px; overflow:hidden; background:#000; }
+  video { width:100%; max-height:260px; object-fit:cover; display:block; }
+  .hud { position:absolute; top:10px; left:10px; right:10px; display:flex; justify-content:space-between; align-items:center; }
+  .badge { background:rgba(11,15,23,0.9); color:#3FB950; border:1px solid #3FB950; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:700; }
+  .timer { background:rgba(11,15,23,0.9); color:#58A6FF; padding:4px 10px; border-radius:999px; font-size:12px; }
+  .row { display:flex; gap:8px; margin-top:10px; }
+  .btn-start { flex:1; background:#1F6FEB; color:#fff; border:none; padding:11px; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer; }
+  .btn-now { background:#21262D; color:#F0F6FC; border:1px solid #30363D; padding:11px 14px; border-radius:8px; font-weight:600; font-size:13px; cursor:pointer; }
+  .results { margin-top:10px; background:#0B0F17; border:1px solid #263042; border-radius:8px; padding:12px; min-height:95px; max-height:175px; overflow-y:auto; font-size:13px; }
+  .sync-col { display:flex; flex-direction:column; gap:8px; margin-top:12px; }
+  .btn-green { width:100%; background:#238636; color:#FFFFFF; border:none; padding:14px; border-radius:8px; font-weight:700; font-size:14px; cursor:pointer; }
+  .btn-green:active { background:#2EA043; }
+  .btn-blue { width:100%; background:#1F6FEB; color:#FFFFFF; border:none; padding:14px; border-radius:8px; font-weight:700; font-size:14px; cursor:pointer; }
+  .btn-blue:active { background:#388BFD; }
+  .status { margin-top:8px; text-align:center; font-size:12px; font-weight:600; min-height:18px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="vid-wrap">
+    <video id="cam" autoplay playsinline muted></video>
+    <div class="hud">
+      <span id="badge" class="badge">● LIVE CAMERA READY</span>
+      <span id="timer" class="timer">Auto-Scan: OFF</span>
+    </div>
+  </div>
+  <canvas id="canvas" style="display:none;"></canvas>
+  <canvas id="motionCanvas" width="32" height="32" style="display:none;"></canvas>
+
+  <div class="row">
+    <button id="toggleBtn" class="btn-start" onclick="toggleAutoScan()">▶ Start Live AI Viewfinder</button>
+    <button class="btn-now" onclick="scanSingleNow(true)">⚡ Scan Now</button>
+  </div>
+
+  <div id="liveResults" class="results">
+    <span style="color:#8B949E;">Point camera at products and tap <b>Start Live AI Viewfinder</b>...</span>
+  </div>
+
+  <div class="sync-col">
+    <button class="btn-green" onclick="sendLiveSync('set')">📥 Update SAP Ledger with Live Count</button>
+    <button class="btn-blue" onclick="sendLiveSync('add')">➕ Add Live Count to Existing SAP Total</button>
+  </div>
+  <div id="pushStatus" class="status"></div>
+</div>
+
+<script>
+let API_KEY = "";
+let CATALOG = [];
+
+function sendToStreamlit(type, data) {
+  window.parent.postMessage(Object.assign({ isStreamlitMessage: true, type: type }, data), "*");
+}
+
+window.addEventListener("message", function(event) {
+  if (event.data && event.data.type === "streamlit:render") {
+    const args = event.data.args || {};
+    if (args.api_key) API_KEY = args.api_key;
+    if (args.catalog) CATALOG = args.catalog;
+    sendToStreamlit("streamlit:setFrameHeight", { height: document.body.scrollHeight + 10 });
+  }
+});
+
+sendToStreamlit("streamlit:componentReady", { apiVersion: 1 });
+sendToStreamlit("streamlit:setFrameHeight", { height: 640 });
+
+const video = document.getElementById('cam');
+const canvas = document.getElementById('canvas');
+const motionCanvas = document.getElementById('motionCanvas');
+const badge = document.getElementById('badge');
+const timerEl = document.getElementById('timer');
+const resultsEl = document.getElementById('liveResults');
+const toggleBtn = document.getElementById('toggleBtn');
+const pushStatus = document.getElementById('pushStatus');
+
+let scanning = false;
+let intervalId = null;
+let inFlight = false;
+let currentFrameCounts = {};
+let currentFrameItems = [];
+let lastValidHtml = "";
+let prevThumb = null;
+let unchangedCount = 0;
+
+function sendLiveSync(mode) {
+  if (Object.keys(currentFrameCounts).length === 0) {
+    pushStatus.style.color = "#D29922";
+    pushStatus.innerText = "⚠ Scan a product first so its SAP ID appears in the box above.";
+    return;
+  }
+  pushStatus.style.color = "#3FB950";
+  pushStatus.innerText = "✅ Sent to Manager Dashboard (" + new Date().toLocaleTimeString() + ")!";
+  sendToStreamlit("streamlit:setComponentValue", {
+    value: {
+      event_id: Date.now() + "_" + Math.random().toString(36).slice(2, 7),
+      mode: mode,
+      counts: currentFrameCounts,
+      items: currentFrameItems
+    }
+  });
+}
+
+function frameChangedSignificantly() {
+  const mCtx = motionCanvas.getContext('2d');
+  mCtx.drawImage(video, 0, 0, 32, 32);
+  const data = mCtx.getImageData(0, 0, 32, 32).data;
+  if (!prevThumb) { prevThumb = data; return true; }
+  let diff = 0;
+  for (let i = 0; i < data.length; i += 16) { diff += Math.abs(data[i] - prevThumb[i]); }
+  prevThumb = data;
+  return (diff / (data.length / 16)) > 4.5;
+}
+
+async function startCamera() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 } },
+      audio: false
+    });
+    video.srcObject = stream;
+  } catch (err) {
+    badge.innerText = "⚠ Camera blocked";
+    badge.style.color = "#F85149";
+    resultsEl.innerHTML = `<span style="color:#F85149;">Camera error: ${err.message}</span>`;
+  }
+}
+startCamera();
+
+function toggleAutoScan() {
+  scanning = !scanning;
+  if (scanning) {
+    toggleBtn.innerText = "⏸ Pause Live Viewfinder";
+    toggleBtn.style.background = "#DA3633";
+    timerEl.innerText = "Auto-Scan: ON (4.0s)";
+    scanSingleNow(true);
+    intervalId = setInterval(() => scanSingleNow(false), 4000);
+  } else {
+    toggleBtn.innerText = "▶ Resume Live AI Viewfinder";
+    toggleBtn.style.background = "#1F6FEB";
+    timerEl.innerText = "Auto-Scan: PAUSED";
+    clearInterval(intervalId);
+  }
+}
+
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+async function callGeminiWithRetry(base64Jpeg) {
+  const prompt = `You are StockSense AI. Identify all grocery/household products in this frame and count the EXACT number of physical units currently visible. Map each product to its matching sap_id in this catalog: ${JSON.stringify(CATALOG)}. If a visible product is not in the catalog, set sap_id="SAP-UNMAPPED". Return ONLY valid JSON: {"items": [{"sap_id": "...", "name": "...", "text_read": "...", "count": 1}]}`;
+  const models = ["gemini-3.5-flash-lite", "gemini-3.8-flash"];
+
+  for (const model of models) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-goog-api-key": API_KEY },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: "image/jpeg", data: base64Jpeg } }] }],
+            generationConfig: { responseMimeType: "application/json", temperature: 0.1 }
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.error?.message || ("HTTP " + res.status));
+        const rawText = data.candidates[0].content.parts[0].text;
+        return { parsed: JSON.parse(rawText), usedModel: model };
+      } catch (e) {
+        await sleep(650 * (attempt + 1));
+      }
+    }
+  }
+  return null;
+}
+
+async function scanSingleNow(forceManual) {
+  if (inFlight || !video.videoWidth || !API_KEY) return;
+  if (!forceManual && !frameChangedSignificantly()) {
+    unchangedCount++;
+    if (unchangedCount > 1 && lastValidHtml) {
+      badge.innerText = "● LOCKED (STEADY VIEW)";
+      badge.style.color = "#3FB950";
+      return;
+    }
+  } else {
+    unchangedCount = 0;
+  }
+
+  inFlight = true;
+  badge.innerText = "🔍 READING LABELS...";
+  badge.style.color = "#58A6FF";
+
+  canvas.width = 512;
+  canvas.height = Math.round((video.videoHeight / video.videoWidth) * 512);
+  canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+  const b64 = canvas.toDataURL('image/jpeg', 0.78).split(',')[1];
+
+  const result = await callGeminiWithRetry(b64);
+
+  if (result && result.parsed && result.parsed.items) {
+    badge.innerText = "● LIVE LOCK (" + result.usedModel + ")";
+    badge.style.color = "#3FB950";
+
+    let freshCounts = {};
+    let html = `<div style="color:#3FB950; font-weight:700; margin-bottom:6px;">✅ Live Shelf View (${new Date().toLocaleTimeString()})</div>`;
+
+    if (result.parsed.items.length === 0) {
+      html += `<div style="color:#8B949E;">No product label in frame — pan camera toward a product...</div>`;
+    } else {
+      currentFrameItems = result.parsed.items;
+      result.parsed.items.forEach(it => {
+        if (it.sap_id && it.sap_id !== "SAP-UNMAPPED") {
+          freshCounts[it.sap_id] = (freshCounts[it.sap_id] || 0) + (it.count || 1);
+        }
+        const tagColor = it.sap_id === "SAP-UNMAPPED" ? "#D29922" : "#58A6FF";
+        html += `<div style="border-left:3px solid #3FB950; padding-left:8px; margin-bottom:6px;">
+          <span style="color:${tagColor}; font-family:monospace;">[${it.sap_id}]</span> <b>${it.name}</b> — In View: <b>${it.count} unit(s)</b><br/>
+          <span style="color:#8B949E; font-size:12px;">Read Text: "${it.text_read}"</span>
+        </div>`;
+      });
+      if (Object.keys(freshCounts).length > 0) {
+        currentFrameCounts = freshCounts;
+      }
+    }
+    lastValidHtml = html;
+    resultsEl.innerHTML = html;
+    sendToStreamlit("streamlit:setFrameHeight", { height: document.body.scrollHeight + 10 });
+  } else {
+    badge.innerText = "⏳ CLOUD BUSY (HOLDING)";
+    badge.style.color = "#D29922";
+    if (!lastValidHtml) {
+      resultsEl.innerHTML = `<div style="color:#D29922; font-size:12px;">⏳ High cloud demand — automatically retrying on next sweep...</div>`;
+    }
+  }
+  inFlight = false;
+}
+</script>
+</body>
+</html>"""
+    with open(index_path, "w", encoding="utf-8") as f:
+        f.write(html_code)
+    return components.declare_component("stocksense_live_scanner", path=comp_dir)
+
+live_scanner_component = get_live_scanner_component()
+
 # --- 42-SKU SAUDI SUPERMARKET SAP MATERIAL MASTER CATALOG ---
 DEFAULT_INVENTORY = [
     # Pantry & Cooking Staples
@@ -183,7 +440,7 @@ DEFAULT_INVENTORY = [
     {"sku_key": "lifebuoy_handwash", "sap_id": "SAP-10045972", "ean13": "6281006080111", "category": "Personal Care", "name": "Lifebuoy Total 10 Hand Wash 200ml", "arabic_name": "غسول اليدين لايفبوي 200 مل", "keywords": ["lifebuoy", "hand wash", "soap", "لايفبوي", "غسول", "صابون"], "aisle": "Aisle G1", "price": 9.50, "erp_qty": 16, "physical_qty": 0, "reorder_pt": 8},
 ]
 
-# --- SHARED MULTI-DEVICE SERVER STORE (PHONE -> LAPTOP REAL-TIME SYNC) ---
+# --- SHARED MULTI-DEVICE SERVER STORE ---
 @st.cache_resource
 def get_shared_store_db():
     return {
@@ -444,7 +701,7 @@ tab1, tab2, tab3, tab4 = st.tabs([
 ])
 
 # ==========================================
-# TAB 1: CONTINUOUS LIVE VIEWFINDER (DEFAULT) + DIRECT SERVER BRIDGE
+# TAB 1: CONTINUOUS LIVE VIEWFINDER (TRUE TWO-WAY COMPONENT)
 # ==========================================
 with tab1:
     col_cam, col_list = st.columns([1.1, 1], gap="large")
@@ -461,10 +718,10 @@ with tab1:
             horizontal=False,
         )
 
-        # --- MODE A: CONTINUOUS LIVE VIEWFINDER WITH DIRECT STREAMLIT POSTMESSAGE BRIDGE ---
+        # --- MODE A: TRUE TWO-WAY LIVE VIEWFINDER ---
         if audit_mode == "🎥 Live Rear-Camera Auto-Scanner (Instant Push)":
-            st.caption("Point camera at products—when detected in the box below, tap the green or blue button to push straight to the Manager's laptop dashboard.")
-            catalog_json = json.dumps([
+            st.caption("Point camera at products—once detected in the box below, tap the green or blue button to push straight to the Manager's laptop dashboard.")
+            catalog_payload = [
                 {
                     "sku_key": i["sku_key"],
                     "sap_id": i["sap_id"],
@@ -473,251 +730,15 @@ with tab1:
                     "keywords": i["keywords"],
                 }
                 for i in shared_db["inventory"]
-            ])
+            ]
 
-            live_scanner_html = f"""
-            <div style="background:#151B26; border:1px solid #263042; border-radius:12px; padding:12px; font-family:sans-serif; color:#F0F6FC; box-sizing:border-box;">
-                <div style="position:relative; width:100%; border-radius:8px; overflow:hidden; background:#000;">
-                    <video id="cam" autoplay playsinline muted style="width:100%; max-height:260px; object-fit:cover; display:block;"></video>
-                    <div id="hud" style="position:absolute; top:10px; left:10px; right:10px; display:flex; justify-content:space-between; align-items:center;">
-                        <span id="badge" style="background:rgba(11,15,23,0.9); color:#3FB950; border:1px solid #3FB950; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:700;">
-                            ● LIVE CAMERA READY
-                        </span>
-                        <span id="timer" style="background:rgba(11,15,23,0.9); color:#58A6FF; padding:4px 10px; border-radius:999px; font-size:12px;">
-                            Auto-Scan: OFF
-                        </span>
-                    </div>
-                </div>
-                <canvas id="canvas" style="display:none;"></canvas>
-                <canvas id="motionCanvas" width="32" height="32" style="display:none;"></canvas>
+            live_event = live_scanner_component(
+                api_key=active_gemini_key,
+                catalog=catalog_payload,
+                key="live_field_cam_v3",
+            )
 
-                <div style="display:flex; gap:8px; margin-top:10px;">
-                    <button id="toggleBtn" onclick="toggleAutoScan()" style="flex:1; background:#1F6FEB; color:#fff; border:none; padding:11px; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer;">
-                        ▶ Start Live AI Viewfinder
-                    </button>
-                    <button onclick="scanSingleNow(true)" style="background:#21262D; color:#F0F6FC; border:1px solid #30363D; padding:11px 14px; border-radius:8px; font-weight:600; font-size:13px; cursor:pointer;">
-                        ⚡ Scan Now
-                    </button>
-                </div>
-
-                <div id="liveResults" style="margin-top:10px; background:#0B0F17; border:1px solid #263042; border-radius:8px; padding:12px; min-height:95px; max-height:175px; overflow-y:auto; font-size:13px;">
-                    <span style="color:#8B949E;">Point camera at products and tap <b>Start Live AI Viewfinder</b>...</span>
-                </div>
-
-                <div style="display:flex; flex-direction:column; gap:8px; margin-top:12px;">
-                    <button onclick="sendLiveSync('set')" style="width:100%; background:#238636; color:#FFFFFF; border:none; padding:13px; border-radius:8px; font-weight:700; font-size:14px; cursor:pointer;">
-                        📥 Update SAP Ledger with Live Count
-                    </button>
-                    <button onclick="sendLiveSync('add')" style="width:100%; background:#1F6FEB; color:#FFFFFF; border:none; padding:13px; border-radius:8px; font-weight:700; font-size:14px; cursor:pointer;">
-                        ➕ Add Live Count to Existing SAP Total
-                    </button>
-                </div>
-                <div id="pushStatus" style="margin-top:8px; text-align:center; font-size:12px; color:#3FB950; font-weight:600;"></div>
-            </div>
-
-            <script>
-            // Official Streamlit Component PostMessage Bridge
-            function sendMessageToStreamlitClient(type, data) {{
-                const outData = Object.assign({{
-                    isStreamlitMessage: true,
-                    type: type,
-                }}, data);
-                window.parent.postMessage(outData, "*");
-            }}
-            sendMessageToStreamlitClient("streamlit:componentReady", {{ apiVersion: 1 }});
-            sendMessageToStreamlitClient("streamlit:setFrameHeight", {{ height: 650 }});
-
-            const API_KEY = {json.dumps(active_gemini_key)};
-            const CATALOG = {catalog_json};
-            const video = document.getElementById('cam');
-            const canvas = document.getElementById('canvas');
-            const motionCanvas = document.getElementById('motionCanvas');
-            const badge = document.getElementById('badge');
-            const timerEl = document.getElementById('timer');
-            const resultsEl = document.getElementById('liveResults');
-            const toggleBtn = document.getElementById('toggleBtn');
-            const pushStatus = document.getElementById('pushStatus');
-
-            let scanning = false;
-            let intervalId = null;
-            let inFlight = false;
-            let currentFrameCounts = {{}};
-            let currentFrameItems = [];
-            let lastValidHtml = "";
-            let prevThumb = null;
-            let unchangedCount = 0;
-
-            function sendLiveSync(mode) {{
-                if (Object.keys(currentFrameCounts).length === 0) {{
-                    pushStatus.style.color = "#D29922";
-                    pushStatus.innerText = "⚠ Point camera at a catalog product first so a count appears above.";
-                    return;
-                }}
-                pushStatus.style.color = "#3FB950";
-                pushStatus.innerText = "🚀 Pushing live counts to Manager Dashboard...";
-                sendMessageToStreamlitClient("streamlit:setComponentValue", {{
-                    value: {{
-                        event_id: Date.now() + "_" + Math.random().toString(36).slice(2, 7),
-                        mode: mode,
-                        counts: currentFrameCounts,
-                        items: currentFrameItems
-                    }}
-                }});
-            }}
-
-            function frameChangedSignificantly() {{
-                const mCtx = motionCanvas.getContext('2d');
-                mCtx.drawImage(video, 0, 0, 32, 32);
-                const data = mCtx.getImageData(0, 0, 32, 32).data;
-                if (!prevThumb) {{
-                    prevThumb = data;
-                    return true;
-                }}
-                let diff = 0;
-                for (let i = 0; i < data.length; i += 16) {{
-                    diff += Math.abs(data[i] - prevThumb[i]);
-                }}
-                prevThumb = data;
-                return (diff / (data.length / 16)) > 4.5;
-            }}
-
-            async function startCamera() {{
-                try {{
-                    const stream = await navigator.mediaDevices.getUserMedia({{
-                        video: {{ facingMode: {{ ideal: "environment" }}, width: {{ ideal: 1280 }} }},
-                        audio: false
-                    }});
-                    video.srcObject = stream;
-                }} catch (err) {{
-                    badge.innerText = "⚠ Camera blocked";
-                    badge.style.color = "#F85149";
-                    resultsEl.innerHTML = `<span style="color:#F85149;">Camera error: ${{err.message}}</span>`;
-                }}
-            }}
-            startCamera();
-
-            function toggleAutoScan() {{
-                scanning = !scanning;
-                if (scanning) {{
-                    toggleBtn.innerText = "⏸ Pause Live Viewfinder";
-                    toggleBtn.style.background = "#DA3633";
-                    timerEl.innerText = "Auto-Scan: ON (4.0s)";
-                    scanSingleNow(true);
-                    intervalId = setInterval(() => scanSingleNow(false), 4000);
-                }} else {{
-                    toggleBtn.innerText = "▶ Resume Live AI Viewfinder";
-                    toggleBtn.style.background = "#1F6FEB";
-                    timerEl.innerText = "Auto-Scan: PAUSED";
-                    clearInterval(intervalId);
-                }}
-            }}
-
-            const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-
-            async function callGeminiWithRetry(base64Jpeg) {{
-                const prompt = `You are StockSense AI. Identify all grocery/household products in this frame and count the EXACT number of physical units currently visible. Map each product to its matching sap_id in this catalog: ${{JSON.stringify(CATALOG)}}. If a visible product is not in the catalog, set sap_id="SAP-UNMAPPED". Return ONLY valid JSON: {{"items": [{{"sap_id": "...", "name": "...", "text_read": "...", "count": 1}}]}}`;
-                const models = ["gemini-3.5-flash-lite", "gemini-3.8-flash"];
-
-                for (const model of models) {{
-                    for (let attempt = 0; attempt < 2; attempt++) {{
-                        try {{
-                            const url = `https://generativelanguage.googleapis.com/v1beta/models/${{model}}:generateContent`;
-                            const res = await fetch(url, {{
-                                method: "POST",
-                                headers: {{
-                                    "Content-Type": "application/json",
-                                    "x-goog-api-key": API_KEY
-                                }},
-                                body: JSON.stringify({{
-                                    contents: [{{
-                                        parts: [
-                                            {{ text: prompt }},
-                                            {{ inline_data: {{ mime_type: "image/jpeg", data: base64Jpeg }} }}
-                                        ]
-                                    }}],
-                                    generationConfig: {{ responseMimeType: "application/json", temperature: 0.1 }}
-                                }})
-                            }});
-                            const data = await res.json();
-                            if (!res.ok) throw new Error(data?.error?.message || ("HTTP " + res.status));
-                            const rawText = data.candidates[0].content.parts[0].text;
-                            return {{ parsed: JSON.parse(rawText), usedModel: model }};
-                        }} catch (e) {{
-                            await sleep(650 * (attempt + 1));
-                        }}
-                    }}
-                }}
-                return null;
-            }}
-
-            async function scanSingleNow(forceManual) {{
-                if (inFlight || !video.videoWidth || !API_KEY) return;
-
-                if (!forceManual && !frameChangedSignificantly()) {{
-                    unchangedCount++;
-                    if (unchangedCount > 1 && lastValidHtml) {{
-                        badge.innerText = "● LOCKED (STEADY VIEW)";
-                        badge.style.color = "#3FB950";
-                        return;
-                    }}
-                }} else {{
-                    unchangedCount = 0;
-                }}
-
-                inFlight = true;
-                badge.innerText = "🔍 READING LABELS...";
-                badge.style.color = "#58A6FF";
-
-                canvas.width = 512;
-                canvas.height = Math.round((video.videoHeight / video.videoWidth) * 512);
-                canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-                const b64 = canvas.toDataURL('image/jpeg', 0.78).split(',')[1];
-
-                const result = await callGeminiWithRetry(b64);
-
-                if (result && result.parsed && result.parsed.items) {{
-                    badge.innerText = "● LIVE LOCK (" + result.usedModel + ")";
-                    badge.style.color = "#3FB950";
-
-                    let freshCounts = {{}};
-                    let html = `<div style="color:#3FB950; font-weight:700; margin-bottom:6px;">✅ Live Shelf View (${{new Date().toLocaleTimeString()}})</div>`;
-
-                    if (result.parsed.items.length === 0) {{
-                        html += `<div style="color:#8B949E;">No product label in frame — pan camera toward a product...</div>`;
-                    }} else {{
-                        currentFrameItems = result.parsed.items;
-                        result.parsed.items.forEach(it => {{
-                            if (it.sap_id && it.sap_id !== "SAP-UNMAPPED") {{
-                                freshCounts[it.sap_id] = (freshCounts[it.sap_id] || 0) + (it.count || 1);
-                            }}
-                            const tagColor = it.sap_id === "SAP-UNMAPPED" ? "#D29922" : "#58A6FF";
-                            html += `<div style="border-left:3px solid #3FB950; padding-left:8px; margin-bottom:6px;">
-                                <span style="color:${{tagColor}}; font-family:monospace;">[${{it.sap_id}}]</span> <b>${{it.name}}</b> — In View: <b>${{it.count}} unit(s)</b><br/>
-                                <span style="color:#8B949E; font-size:12px;">Read Text: "${{it.text_read}}"</span>
-                            </div>`;
-                        }});
-                        if (Object.keys(freshCounts).length > 0) {{
-                            currentFrameCounts = freshCounts;
-                            pushStatus.innerText = "";
-                        }}
-                    }}
-                    lastValidHtml = html;
-                    resultsEl.innerHTML = html;
-                }} else {{
-                    badge.innerText = "⏳ CLOUD BUSY (HOLDING)";
-                    badge.style.color = "#D29922";
-                    if (!lastValidHtml) {{
-                        resultsEl.innerHTML = `<div style="color:#D29922; font-size:12px;">⏳ High cloud demand — automatically retrying on next sweep...</div>`;
-                    }}
-                }}
-                inFlight = false;
-            }}
-            </script>
-            """
-
-            live_event = components.html(live_scanner_html, height=655)
-
-            # Process live push immediately when received from the component bridge
+            # Process live push immediately when received from the component
             if isinstance(live_event, dict) and live_event.get("event_id"):
                 ev_id = live_event["event_id"]
                 if ev_id != st.session_state.processed_live_event_id:
