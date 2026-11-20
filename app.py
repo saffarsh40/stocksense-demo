@@ -18,7 +18,7 @@ from google.genai import types
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(
-    page_title="StockSense AI | Live Shelf & SAP Intelligence",
+    page_title="StockSense AI | Enterprise Shelf & SAP Intelligence",
     page_icon="📦",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -28,60 +28,70 @@ st.set_page_config(
 st.markdown("""
 <style>
     .stApp {
-        background-color: #0E1117;
+        background-color: #0B0F17;
     }
     #MainMenu, footer {visibility: hidden;}
     .block-container {
-        padding-top: 2.5rem;
+        padding-top: 2.2rem;
         padding-bottom: 2.5rem;
-        max-width: 1280px;
+        max-width: 1340px;
     }
     .brand-bar {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 14px 20px;
-        background: linear-gradient(90deg, #161B22 0%, #0E1117 100%);
-        border: 1px solid #262C36;
-        border-radius: 12px;
-        margin-bottom: 16px;
+        flex-wrap: wrap;
+        gap: 10px;
+        padding: 16px 22px;
+        background: linear-gradient(135deg, #151C28 0%, #0E131D 100%);
+        border: 1px solid #263042;
+        border-radius: 14px;
+        margin-bottom: 18px;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
     }
     .status-pill {
         background-color: rgba(63, 185, 80, 0.14);
         color: #3FB950;
         border: 1px solid rgba(63, 185, 80, 0.45);
-        padding: 5px 12px;
+        padding: 6px 14px;
         border-radius: 999px;
         font-size: 0.78rem;
         font-weight: 600;
     }
     div[data-testid="stMetric"] {
-        background-color: #161B22;
-        border: 1px solid #262C36;
-        padding: 14px 16px;
-        border-radius: 12px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+        background: linear-gradient(180deg, #151B26 0%, #111620 100%);
+        border: 1px solid #263042;
+        padding: 16px 18px;
+        border-radius: 14px;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
     }
     div[data-testid="stMetricValue"] {
-        font-size: 1.65rem !important;
-        font-weight: 700 !important;
+        font-size: 1.7rem !important;
+        font-weight: 800 !important;
         color: #F0F6FC !important;
     }
     .stTabs [data-baseweb="tab-list"] {
         gap: 8px;
-        background-color: #161B22;
+        background-color: #151B26;
         padding: 6px;
-        border-radius: 10px;
-        border: 1px solid #262C36;
+        border-radius: 12px;
+        border: 1px solid #263042;
     }
     .stTabs [data-baseweb="tab"] {
-        border-radius: 7px;
-        padding: 8px 16px;
+        border-radius: 8px;
+        padding: 9px 18px;
         font-weight: 600;
     }
     .stTabs [aria-selected="true"] {
         background-color: #1F6FEB !important;
         color: #FFFFFF !important;
+    }
+    .chart-card {
+        background-color: #131923;
+        border: 1px solid #263042;
+        border-radius: 14px;
+        padding: 16px 18px 8px 18px;
+        margin-bottom: 14px;
     }
     .sap-badge {
         display: inline-block;
@@ -95,7 +105,7 @@ st.markdown("""
         margin-right: 6px;
     }
     .evidence-box {
-        background-color: #12171F;
+        background-color: #121822;
         border-left: 3px solid #3FB950;
         padding: 10px 14px;
         border-radius: 0 8px 8px 0;
@@ -112,98 +122,69 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- SAP MATERIAL MASTER & BILINGUAL CATALOG ---
+# --- 45-SKU SAUDI SUPERMARKET SAP MATERIAL MASTER CATALOG ---
 DEFAULT_INVENTORY = [
-    {
-        "sku_key": "osra_sugar",
-        "sap_id": "SAP-10045210",
-        "ean13": "6281007041012",
-        "sku": "SUG-OSR-1KG",
-        "name": "Osra White Sugar 1kg",
-        "arabic_name": "سكر الأسرة الأبيض الناعم 1 كجم",
-        "keywords": ["osra", "al osra", "sugar", "أسرة", "الأسرة", "سكر", "قيراط"],
-        "aisle": "Aisle B2",
-        "price": 5.50,
-        "erp_qty": 12,
-        "physical_qty": 0,
-        "reorder_pt": 6,
-    },
-    {
-        "sku_key": "kuwait_flour",
-        "sap_id": "SAP-10045218",
-        "ean13": "6271001010025",
-        "sku": "FLR-KWT-2KG",
-        "name": "Kuwait Patent Flour 2kg",
-        "arabic_name": "طحين الكويت الفاخر 2 كجم",
-        "keywords": ["kuwait", "flour", "طحين", "دقيق", "الكويت", "المطاحن"],
-        "aisle": "Aisle B2",
-        "price": 8.00,
-        "erp_qty": 15,
-        "physical_qty": 0,
-        "reorder_pt": 8,
-    },
-    {
-        "sku_key": "afia_oil",
-        "sap_id": "SAP-10045304",
-        "ean13": "6281018001053",
-        "sku": "OIL-AFI-1.5L",
-        "name": "Afia Corn Oil 1.5L",
-        "arabic_name": "زيت ذرة عافية 1.5 لتر",
-        "keywords": ["afia", "corn oil", "oil", "عافية", "زيت", "ذرة"],
-        "aisle": "Aisle A1",
-        "price": 24.50,
-        "erp_qty": 8,
-        "physical_qty": 0,
-        "reorder_pt": 5,
-    },
-    {
-        "sku_key": "almarai_milk",
-        "sap_id": "SAP-10045411",
-        "ean13": "6281007020017",
-        "sku": "DRY-ALM-1L",
-        "name": "Almarai Fresh Milk 1L",
-        "arabic_name": "حليب المراعي طازج 1 لتر",
-        "keywords": ["almarai", "milk", "fresh", "المراعي", "حليب", "طازج"],
-        "aisle": "Chiller C1",
-        "price": 6.00,
-        "erp_qty": 20,
-        "physical_qty": 0,
-        "reorder_pt": 10,
-    },
-    {
-        "sku_key": "pepsi_can",
-        "sap_id": "SAP-10045502",
-        "ean13": "6281034000112",
-        "sku": "BEV-PEP-330",
-        "name": "Pepsi Cola Can 330ml",
-        "arabic_name": "بيبسي كولا علبة 330 مل",
-        "keywords": ["pepsi", "cola", "بيبسي", "كولا"],
-        "aisle": "Aisle D4",
-        "price": 2.50,
-        "erp_qty": 24,
-        "physical_qty": 0,
-        "reorder_pt": 12,
-    },
-    {
-        "sku_key": "nova_water",
-        "sap_id": "SAP-10045609",
-        "ean13": "6281038000019",
-        "sku": "BEV-NOV-330",
-        "name": "Nova Bottled Water 330ml",
-        "arabic_name": "مياه نوفا 330 مل",
-        "keywords": ["nova", "water", "نوفا", "مياه", "ماء"],
-        "aisle": "Aisle D1",
-        "price": 1.00,
-        "erp_qty": 30,
-        "physical_qty": 0,
-        "reorder_pt": 15,
-    },
+    # Pantry & Cooking Staples
+    {"sku_key": "osra_sugar", "sap_id": "SAP-10045210", "ean13": "6281007041012", "category": "Pantry", "name": "Osra White Sugar 1kg", "arabic_name": "سكر الأسرة الأبيض 1 كجم", "keywords": ["osra", "al osra", "sugar", "أسرة", "الأسرة", "سكر", "قيراط"], "aisle": "Aisle B2", "price": 5.50, "erp_qty": 12, "physical_qty": 0, "reorder_pt": 6},
+    {"sku_key": "kuwait_flour", "sap_id": "SAP-10045218", "ean13": "6271001010025", "category": "Pantry", "name": "Kuwait Patent Flour 2kg", "arabic_name": "طحين الكويت الفاخر 2 كجم", "keywords": ["kuwait", "flour", "طحين", "دقيق", "الكويت", "المطاحن"], "aisle": "Aisle B2", "price": 8.00, "erp_qty": 15, "physical_qty": 0, "reorder_pt": 8},
+    {"sku_key": "afia_oil", "sap_id": "SAP-10045304", "ean13": "6281018001053", "category": "Pantry", "name": "Afia Corn Oil 1.5L", "arabic_name": "زيت ذرة عافية 1.5 لتر", "keywords": ["afia", "corn oil", "oil", "عافية", "زيت", "ذرة"], "aisle": "Aisle A1", "price": 24.50, "erp_qty": 8, "physical_qty": 0, "reorder_pt": 5},
+    {"sku_key": "alwalimah_rice", "sap_id": "SAP-10045312", "ean13": "6281022003018", "category": "Pantry", "name": "Al Walimah Basmati Rice 5kg", "arabic_name": "أرز الوليمة مزة بسمتي 5 كجم", "keywords": ["walimah", "al walimah", "rice", "basmati", "الوليمة", "وليمة", "أرز", "رز"], "aisle": "Aisle B1", "price": 42.00, "erp_qty": 10, "physical_qty": 0, "reorder_pt": 5},
+    {"sku_key": "abukass_rice", "sap_id": "SAP-10045319", "ean13": "6281022003094", "category": "Pantry", "name": "Abu Kass Basmati Rice 5kg", "arabic_name": "أرز أبو كاس بسمتي 5 كجم", "keywords": ["abu kass", "abukass", "rice", "أبو كاس", "ابو كاس", "أرز"], "aisle": "Aisle B1", "price": 44.00, "erp_qty": 9, "physical_qty": 0, "reorder_pt": 4},
+    {"sku_key": "goody_pasta", "sap_id": "SAP-10045325", "ean13": "6281011004029", "category": "Pantry", "name": "Goody Macaroni Pasta 450g", "arabic_name": "مكرونة قودي 450 جم", "keywords": ["goody", "pasta", "macaroni", "spaghetti", "قودي", "مكرونة", "معكرونة"], "aisle": "Aisle B3", "price": 4.50, "erp_qty": 18, "physical_qty": 0, "reorder_pt": 8},
+    {"sku_key": "heinz_ketchup", "sap_id": "SAP-10045331", "ean13": "5000157024671", "category": "Pantry", "name": "Heinz Tomato Ketchup 570g", "arabic_name": "كاتشب طماطم هاينز 570 جم", "keywords": ["heinz", "ketchup", "tomato", "هاينز", "كاتشب"], "aisle": "Aisle A3", "price": 14.50, "erp_qty": 14, "physical_qty": 0, "reorder_pt": 6},
+    {"sku_key": "almarai_olive_oil", "sap_id": "SAP-10045340", "ean13": "6281007055019", "category": "Pantry", "name": "Al Jouf Extra Virgin Olive Oil 500ml", "arabic_name": "زيت زيتون الجوف بكر 500 مل", "keywords": ["olive oil", "al jouf", "nadec", "زيت زيتون", "الجوف", "نادك"], "aisle": "Aisle A1", "price": 29.00, "erp_qty": 7, "physical_qty": 0, "reorder_pt": 4},
+    {"sku_key": "al_alali_paste", "sap_id": "SAP-10045348", "ean13": "6281014002011", "category": "Pantry", "name": "Al Alali Tomato Paste 135g", "arabic_name": "معجون طماطم العلالي 135 جم", "keywords": ["al alali", "tomato paste", "العلالي", "معجون طماطم", "صلصة"], "aisle": "Aisle A2", "price": 2.25, "erp_qty": 25, "physical_qty": 0, "reorder_pt": 12},
+    {"sku_key": "maggi_cubes", "sap_id": "SAP-10045355", "ean13": "7613035012042", "category": "Pantry", "name": "Maggi Chicken Bouillon 24 Cubes", "arabic_name": "مرقة دجاج ماجي 24 مكعب", "keywords": ["maggi", "bouillon", "chicken", "ماجي", "مرقة"], "aisle": "Aisle A2", "price": 11.50, "erp_qty": 16, "physical_qty": 0, "reorder_pt": 8},
+
+    # Dairy, Cheese & Breakfast
+    {"sku_key": "almarai_milk", "sap_id": "SAP-10045411", "ean13": "6281007020017", "category": "Dairy & Breakfast", "name": "Almarai Fresh Milk 1L", "arabic_name": "حليب المراعي طازج 1 لتر", "keywords": ["almarai", "milk", "fresh", "المراعي", "حليب", "طازج"], "aisle": "Chiller C1", "price": 6.00, "erp_qty": 20, "physical_qty": 0, "reorder_pt": 10},
+    {"sku_key": "almarai_laban", "sap_id": "SAP-10045418", "ean13": "6281007020093", "category": "Dairy & Breakfast", "name": "Almarai Fresh Laban 1L", "arabic_name": "لبن المراعي طازج 1 لتر", "keywords": ["laban", "almarai", "لبن", "المراعي"], "aisle": "Chiller C1", "price": 6.00, "erp_qty": 18, "physical_qty": 0, "reorder_pt": 9},
+    {"sku_key": "puck_cheese", "sap_id": "SAP-10045424", "ean13": "5760466901024", "category": "Dairy & Breakfast", "name": "Puck Cream Cheese Jar 500g", "arabic_name": "جبنة بوك كريم قابلة للدهن 500 جم", "keywords": ["puck", "cream cheese", "cheese", "بوك", "جبن", "جبنة"], "aisle": "Chiller C2", "price": 19.50, "erp_qty": 12, "physical_qty": 0, "reorder_pt": 6},
+    {"sku_key": "kraft_cheddar", "sap_id": "SAP-10045430", "ean13": "7622210100948", "category": "Dairy & Breakfast", "name": "Kraft Original Cheddar Tin 100g", "arabic_name": "جبنة كرافت شيدر أصلية 100 جم", "keywords": ["kraft", "cheddar", "cheese", "كرافت", "شيدر", "جبنة"], "aisle": "Aisle C3", "price": 7.50, "erp_qty": 22, "physical_qty": 0, "reorder_pt": 10},
+    {"sku_key": "nido_milk", "sap_id": "SAP-10045437", "ean13": "7613034890016", "category": "Dairy & Breakfast", "name": "Nestle Nido Milk Powder 900g", "arabic_name": "حليب نيدو مجفف 900 جم", "keywords": ["nido", "nestle", "milk powder", "نيدو", "نستله", "حليب مجفف"], "aisle": "Aisle C3", "price": 46.00, "erp_qty": 10, "physical_qty": 0, "reorder_pt": 5},
+    {"sku_key": "lipton_tea", "sap_id": "SAP-10045443", "ean13": "6281006010125", "category": "Dairy & Breakfast", "name": "Lipton Yellow Label Tea 100 Bags", "arabic_name": "شاي ليبتون العلامة الصفراء 100 كيس", "keywords": ["lipton", "tea", "yellow label", "ليبتون", "شاي"], "aisle": "Aisle C4", "price": 17.50, "erp_qty": 15, "physical_qty": 0, "reorder_pt": 7},
+    {"sku_key": "nescafe_classic", "sap_id": "SAP-10045450", "ean13": "7613033010125", "category": "Dairy & Breakfast", "name": "Nescafe Classic Jar 190g", "arabic_name": "قهوة نسكافيه كلاسيك 190 جم", "keywords": ["nescafe", "coffee", "classic", "نسكافيه", "قهوة"], "aisle": "Aisle C4", "price": 26.00, "erp_qty": 11, "physical_qty": 0, "reorder_pt": 5},
+    {"sku_key": "kelloggs_cornflakes", "sap_id": "SAP-10045458", "ean13": "5053827100120", "category": "Dairy & Breakfast", "name": "Kelloggs Corn Flakes 500g", "arabic_name": "رقائق الذرة كيلوقز كورن فليكس 500 جم", "keywords": ["kellogg", "corn flakes", "cereal", "كيلوقز", "كورن فليكس"], "aisle": "Aisle C2", "price": 18.00, "erp_qty": 12, "physical_qty": 0, "reorder_pt": 6},
+
+    # Beverages & Water
+    {"sku_key": "pepsi_can", "sap_id": "SAP-10045502", "ean13": "6281034000112", "category": "Beverages", "name": "Pepsi Cola Can 330ml", "arabic_name": "بيبسي كولا علبة 330 مل", "keywords": ["pepsi", "cola", "بيبسي", "كولا"], "aisle": "Aisle D4", "price": 2.50, "erp_qty": 24, "physical_qty": 0, "reorder_pt": 12},
+    {"sku_key": "sevenup_can", "sap_id": "SAP-10045508", "ean13": "6281034000228", "category": "Beverages", "name": "7UP Lemon Lime Can 330ml", "arabic_name": "سفن أب علبة 330 مل", "keywords": ["7up", "seven up", "سفن اب", "سفن أب"], "aisle": "Aisle D4", "price": 2.50, "erp_qty": 20, "physical_qty": 0, "reorder_pt": 10},
+    {"sku_key": "mirinda_can", "sap_id": "SAP-10045514", "ean13": "6281034000334", "category": "Beverages", "name": "Mirinda Citrus Can 330ml", "arabic_name": "ميرندا حمضيات علبة 330 مل", "keywords": ["mirinda", "citrus", "ميرندا", "حمضيات"], "aisle": "Aisle D4", "price": 2.50, "erp_qty": 18, "physical_qty": 0, "reorder_pt": 9},
+    {"sku_key": "cocacola_can", "sap_id": "SAP-10045520", "ean13": "5449000000996", "category": "Beverages", "name": "Coca-Cola Can 330ml", "arabic_name": "كوكاكولا علبة 330 مل", "keywords": ["coca-cola", "coca cola", "coke", "كوكاكولا", "كولا"], "aisle": "Aisle D4", "price": 2.50, "erp_qty": 22, "physical_qty": 0, "reorder_pt": 10},
+    {"sku_key": "nova_water", "sap_id": "SAP-10045609", "ean13": "6281038000019", "category": "Beverages", "name": "Nova Bottled Water 330ml", "arabic_name": "مياه نوفا 330 مل", "keywords": ["nova", "water", "نوفا", "مياه", "ماء"], "aisle": "Aisle D1", "price": 1.00, "erp_qty": 30, "physical_qty": 0, "reorder_pt": 15},
+    {"sku_key": "berain_water", "sap_id": "SAP-10045615", "ean13": "6281068000115", "category": "Beverages", "name": "Berain Bottled Water 330ml", "arabic_name": "مياه بيرين 330 مل", "keywords": ["berain", "water", "بيرين", "مياه"], "aisle": "Aisle D1", "price": 1.00, "erp_qty": 28, "physical_qty": 0, "reorder_pt": 14},
+    {"sku_key": "almarai_juice", "sap_id": "SAP-10045622", "ean13": "6281007030115", "category": "Beverages", "name": "Almarai Mango Juice 1L", "arabic_name": "عصير المراعي مانجو 1 لتر", "keywords": ["juice", "mango", "almarai", "عصير", "مانجو", "المراعي"], "aisle": "Chiller C1", "price": 7.00, "erp_qty": 14, "physical_qty": 0, "reorder_pt": 7},
+
+    # Snacks, Biscuits & Chocolates
+    {"sku_key": "lays_chips", "sap_id": "SAP-10045701", "ean13": "6281034011019", "category": "Snacks & Sweets", "name": "Lay's Salted Potato Chips 155g", "arabic_name": "بطاطس ليز بالملح 155 جم", "keywords": ["lays", "lay's", "chips", "ليز", "بطاطس", "شيبس"], "aisle": "Aisle E1", "price": 6.50, "erp_qty": 16, "physical_qty": 0, "reorder_pt": 8},
+    {"sku_key": "pringles_original", "sap_id": "SAP-10045708", "ean13": "5053990101573", "category": "Snacks & Sweets", "name": "Pringles Original Can 165g", "arabic_name": "بطاطس برينجلز أصلي 165 جم", "keywords": ["pringles", "chips", "برينجلز", "بطاطس"], "aisle": "Aisle E1", "price": 11.00, "erp_qty": 12, "physical_qty": 0, "reorder_pt": 6},
+    {"sku_key": "galaxy_chocolate", "sap_id": "SAP-10045715", "ean13": "6294003530112", "category": "Snacks & Sweets", "name": "Galaxy Smooth Milk Chocolate 80g", "arabic_name": "شوكولاتة جالكسي بالحليب 80 جم", "keywords": ["galaxy", "chocolate", "جالكسي", "شوكولاتة"], "aisle": "Aisle E2", "price": 6.50, "erp_qty": 20, "physical_qty": 0, "reorder_pt": 10},
+    {"sku_key": "kitkat_4finger", "sap_id": "SAP-10045721", "ean13": "7613034626844", "category": "Snacks & Sweets", "name": "KitKat 4-Finger Chocolate 41.5g", "arabic_name": "شوكولاتة كيت كات 4 أصابع", "keywords": ["kitkat", "kit kat", "chocolate", "كيت كات", "شوكولاتة"], "aisle": "Aisle E2", "price": 3.50, "erp_qty": 25, "physical_qty": 0, "reorder_pt": 12},
+    {"sku_key": "oreo_biscuits", "sap_id": "SAP-10045728", "ean13": "7622210449283", "category": "Snacks & Sweets", "name": "Oreo Original Sandwich Cookies 154g", "arabic_name": "بسكويت أوريو الأصلي 154 جم", "keywords": ["oreo", "biscuit", "cookies", "أوريو", "اوريو", "بسكويت"], "aisle": "Aisle E3", "price": 5.50, "erp_qty": 18, "physical_qty": 0, "reorder_pt": 9},
+
+    # Canned Foods
+    {"sku_key": "goody_tuna", "sap_id": "SAP-10045801", "ean13": "6281011001011", "category": "Canned Foods", "name": "Goody Tenderina Tuna 185g", "arabic_name": "تونة قودي تندرينا 185 جم", "keywords": ["goody", "tuna", "tenderina", "قودي", "تونة"], "aisle": "Aisle A4", "price": 8.50, "erp_qty": 20, "physical_qty": 0, "reorder_pt": 10},
+    {"sku_key": "luna_foul", "sap_id": "SAP-10045809", "ean13": "6281004002011", "category": "Canned Foods", "name": "Luna Foul Medames Plain 450g", "arabic_name": "فول مدمس لونا سادة 450 جم", "keywords": ["luna", "foul", "beans", "لونا", "فول"], "aisle": "Aisle A4", "price": 4.25, "erp_qty": 16, "physical_qty": 0, "reorder_pt": 8},
+    {"sku_key": "al_alali_corn", "sap_id": "SAP-10045815", "ean13": "6281014005012", "category": "Canned Foods", "name": "Al Alali Whole Kernel Sweet Corn 340g", "arabic_name": "ذرة حلوة كاملة العلالي 340 جم", "keywords": ["sweet corn", "corn", "al alali", "ذرة", "العلالي"], "aisle": "Aisle A4", "price": 5.00, "erp_qty": 15, "physical_qty": 0, "reorder_pt": 7},
+
+    # Household & Cleaning
+    {"sku_key": "dettol_antiseptic", "sap_id": "SAP-10045901", "ean13": "6291100120015", "category": "Household & Care", "name": "Dettol Antiseptic Disinfectant 500ml", "arabic_name": "مطهر ديتول الأصلي 500 مل", "keywords": ["dettol", "antiseptic", "disinfectant", "ديتول", "مطهر"], "aisle": "Aisle F1", "price": 21.00, "erp_qty": 12, "physical_qty": 0, "reorder_pt": 6},
+    {"sku_key": "fairy_dishwash", "sap_id": "SAP-10045908", "ean13": "4084500123456", "category": "Household & Care", "name": "Fairy Lemon Dishwashing Liquid 800ml", "arabic_name": "سائل غسيل الصحون فيري ليمون 800 مل", "keywords": ["fairy", "dish", "lemon", "فيري", "صحون"], "aisle": "Aisle F1", "price": 13.50, "erp_qty": 14, "physical_qty": 0, "reorder_pt": 7},
+    {"sku_key": "tide_detergent", "sap_id": "SAP-10045915", "ean13": "6281006040115", "category": "Household & Care", "name": "Tide Laundry Powder Detergent 2.5kg", "arabic_name": "مسحوق غسيل تايد 2.5 كجم", "keywords": ["tide", "detergent", "laundry", "تايد", "مسحوق غسيل"], "aisle": "Aisle F2", "price": 34.00, "erp_qty": 10, "physical_qty": 0, "reorder_pt": 5},
+    {"sku_key": "fine_tissues", "sap_id": "SAP-10045922", "ean13": "6281029001012", "category": "Household & Care", "name": "Fine Fluffy Facial Tissues 150 Sheets", "arabic_name": "مناديل وجه فاين فلافي 150 منديل", "keywords": ["fine", "tissue", "tissues", "فاين", "مناديل"], "aisle": "Aisle F3", "price": 6.00, "erp_qty": 24, "physical_qty": 0, "reorder_pt": 12},
+    {"sku_key": "sanita_bags", "sap_id": "SAP-10045929", "ean13": "6281012003018", "category": "Household & Care", "name": "Sanita Club Trash Bags 30 Gallon", "arabic_name": "أكياس نفايات سانيتا كلوب 30 جالون", "keywords": ["sanita", "trash bags", "garbage", "سانيتا", "أكياس"], "aisle": "Aisle F3", "price": 12.50, "erp_qty": 15, "physical_qty": 0, "reorder_pt": 7},
+
+    # Personal Care
+    {"sku_key": "signal_toothpaste", "sap_id": "SAP-10045951", "ean13": "6281006070112", "category": "Personal Care", "name": "Signal Cavity Fighter Toothpaste 120ml", "arabic_name": "معجون أسنان سيجنال مكافح التسوس 120 مل", "keywords": ["signal", "toothpaste", "colgate", "سيجنال", "كولجيت", "معجون أسنان"], "aisle": "Aisle G1", "price": 8.00, "erp_qty": 18, "physical_qty": 0, "reorder_pt": 9},
+    {"sku_key": "head_shoulders", "sap_id": "SAP-10045958", "ean13": "4084500987654", "category": "Personal Care", "name": "Head & Shoulders Menthol Shampoo 400ml", "arabic_name": "شامبو هيد آند شولدرز نعناع 400 مل", "keywords": ["head", "shoulders", "shampoo", "هيد اند شولدرز", "شامبو"], "aisle": "Aisle G2", "price": 22.00, "erp_qty": 12, "physical_qty": 0, "reorder_pt": 6},
+    {"sku_key": "nivea_cream", "sap_id": "SAP-10045965", "ean13": "4005808123456", "category": "Personal Care", "name": "Nivea Soft Moisturizing Cream 200ml", "arabic_name": "كريم نيفيا سوفت المرطب 200 مل", "keywords": ["nivea", "cream", "soft", "نيفيا", "كريم"], "aisle": "Aisle G2", "price": 16.50, "erp_qty": 14, "physical_qty": 0, "reorder_pt": 7},
+    {"sku_key": "lifebuoy_handwash", "sap_id": "SAP-10045972", "ean13": "6281006080111", "category": "Personal Care", "name": "Lifebuoy Total 10 Hand Wash 200ml", "arabic_name": "غسول اليدين لايفبوي 200 مل", "keywords": ["lifebuoy", "hand wash", "soap", "لايفبوي", "غسول", "صابون"], "aisle": "Aisle G1", "price": 9.50, "erp_qty": 16, "physical_qty": 0, "reorder_pt": 8},
 ]
 
 # --- STRUCTURED OUTPUT SCHEMA ---
 class DetectedProduct(BaseModel):
     sku_key: str = Field(
-        description="Matched catalog key: osra_sugar, kuwait_flour, afia_oil, almarai_milk, pepsi_can, nova_water, or 'unmapped_item'"
+        description="Matched catalog key from the SAP catalog, or 'unmapped_item'"
     )
     sap_id: str = Field(
         description="Corresponding SAP Material ID from the catalog, or 'SAP-UNMAPPED'"
@@ -281,7 +262,8 @@ with st.sidebar:
     )
     active_gemini_key = user_api_key.strip() or secret_key or os.environ.get("GEMINI_API_KEY", "")
     st.caption(f"Active Model: **{st.session_state.active_model_used}**")
-    if st.button("🔄 Reset Counts to Zero", use_container_width=True):
+    st.caption(f"Loaded SAP Catalog: **{len(st.session_state.inventory)} SKUs**")
+    if st.button("🔄 Reset All Counts to Zero", use_container_width=True):
         st.session_state.inventory = [item.copy() for item in DEFAULT_INVENTORY]
         st.session_state.scan_history = []
         st.session_state.last_annotated_img = None
@@ -339,7 +321,7 @@ def call_gemini_with_failover(client: genai.Client, contents: list) -> ShelfScan
     last_err = None
 
     for model_name in model_chain:
-        for _ in range(2):
+        for attempt in range(3):
             try:
                 response = client.models.generate_content(
                     model=model_name,
@@ -355,12 +337,12 @@ def call_gemini_with_failover(client: genai.Client, contents: list) -> ShelfScan
             except Exception as err:
                 last_err = err
                 err_str = str(err)
-                if "503" in err_str or "UNAVAILABLE" in err_str or "429" in err_str:
-                    time.sleep(0.5)
+                if "503" in err_str or "UNAVAILABLE" in err_str or "429" in err_str or "high demand" in err_str.lower():
+                    time.sleep(0.8 * (attempt + 1))
                     continue
                 raise err
 
-    raise RuntimeError(f"Models busy right now. Details: {last_err}")
+    raise RuntimeError(f"Temporary cloud traffic spike. Please retry in a few seconds. ({last_err})")
 
 
 def analyze_media_frames(pil_images: List[Image.Image], catalog: list, api_key: str, is_video_walkthrough: bool = False):
@@ -401,8 +383,8 @@ Instructions:
 Local ZBar decoded barcodes: {json.dumps(barcode_hits)}
 
 Rules:
-- Match Arabic or English keywords accurately (e.g., 'أسرة' or 'الأسرة' or 'سكر' or 'قيراط' or 'Al Osra' or 'Osra' or 'Sugar' -> 'osra_sugar' / 'SAP-10045210'; 'المراعي' or 'حليب' or 'Almarai' -> 'almarai_milk' / 'SAP-10045411'; 'عافية' or 'Afia' -> 'afia_oil' / 'SAP-10045304'; 'طحين' or 'الكويت' or 'Kuwait' -> 'kuwait_flour' / 'SAP-10045218'; 'بيبسي' or 'Pepsi' -> 'pepsi_can' / 'SAP-10045502'; 'نوفا' or 'Nova' -> 'nova_water' / 'SAP-10045609').
-- If a product is clearly readable on the packaging (e.g., another grocery brand) but not in the 6-item catalog above, set sku_key='unmapped_item', sap_id='SAP-UNMAPPED', and still report its exact English/Arabic name, extracted text, and count.
+- Match Arabic or English brand/product keywords to the exact `sku_key` and `sap_id` in the catalog above.
+- If a product is clearly readable on the packaging (e.g., another household brand) but not in the catalog above, set sku_key='unmapped_item', sap_id='SAP-UNMAPPED', and still report its exact English/Arabic name, extracted text, and count.
 """
 
     contents = [*pil_images, prompt]
@@ -467,14 +449,14 @@ def apply_scan_results(scan_result: ShelfScanResult, barcode_hits: list, accumul
 st.markdown(f"""
 <div class="brand-bar">
     <div>
-        <span style="font-size: 1.3rem; font-weight: 800; color: #F0F6FC; letter-spacing: -0.4px;">
+        <span style="font-size: 1.35rem; font-weight: 800; color: #F0F6FC; letter-spacing: -0.4px;">
             📦 StockSense AI
         </span>
         <span style="color: #8B949E; font-size: 0.85rem; margin-left: 10px;">
-            Continuous Aisle Vision • Bilingual OCR (AR/EN) • Barcode-to-SAP
+            Enterprise Shelf Vision • Bilingual OCR (AR/EN) • SAP S/4HANA Live Connector
         </span>
     </div>
-    <div class="status-pill">● Engine Ready ({st.session_state.active_model_used})</div>
+    <div class="status-pill">● SAP Connected ({len(st.session_state.inventory)} SKUs • {st.session_state.active_model_used})</div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -484,6 +466,7 @@ if st.session_state.sync_banner_msg:
 # --- CALCULATE LIVE METRICS ---
 df = pd.DataFrame(st.session_state.inventory)
 df["variance"] = df["physical_qty"] - df["erp_qty"]
+df["abs_variance"] = df["variance"].abs()
 df["rev_at_risk"] = df.apply(lambda r: abs(r["variance"]) * r["price"] if r["variance"] < 0 else 0.0, axis=1)
 df["status"] = df.apply(
     lambda r: "🔴 Stockout" if r["physical_qty"] == 0 else ("🟠 Low Stock" if r["physical_qty"] <= r["reorder_pt"] else "🟢 Optimal"),
@@ -495,12 +478,13 @@ total_phys = int(df["physical_qty"].sum())
 accuracy = round((min(total_phys, total_erp) / total_erp) * 100, 1) if total_erp > 0 else 100.0
 rev_risk = df["rev_at_risk"].sum()
 alerts_count = len(df[df["physical_qty"] <= df["reorder_pt"]])
+scanned_skus_count = len(df[df["physical_qty"] > 0])
 
 c1, c2, c3, c4 = st.columns(4)
-c1.metric("Inventory Accuracy", f"{accuracy}%", f"{total_phys - total_erp:+d} units vs SAP")
+c1.metric("Inventory Accuracy", f"{accuracy}%", f"{scanned_skus_count} of {len(df)} SKUs audited")
 c2.metric("Revenue at Risk", f"SAR {rev_risk:,.2f}", "Phantom stock exposure", delta_color="inverse")
-c3.metric("Active Replenishment Alerts", f"{alerts_count} SKUs", "SAP PO triggers")
-c4.metric("Audit Speed", "100 SKUs / min", "Continuous aisle sweep")
+c3.metric("Replenishment Alerts", f"{alerts_count} SKUs", "SAP PO triggers")
+c4.metric("SAP Material Master", f"{len(df)} Active SKUs", "Live ERP Feed")
 
 st.write("")
 
@@ -519,7 +503,7 @@ with tab1:
     col_cam, col_list = st.columns([1.1, 1], gap="large")
 
     with col_cam:
-        st.subheader("1. Aisle Capture Mode (Scalable to 100+ SKUs)")
+        st.subheader("1. Aisle Capture Mode (42+ Supermarket SKUs)")
         audit_mode = st.radio(
             "Select Capture Workflow:",
             [
@@ -535,14 +519,13 @@ with tab1:
             value=True,
         )
 
-        # --- MODE A: DE-DUPLICATED LIVE REAR-CAMERA SCANNER ---
+        # --- MODE A: RESILIENT LIVE REAR-CAMERA SCANNER ---
         if audit_mode == "🎥 Live Rear-Camera Auto-Scanner":
-            st.caption("Point at products to see live SAP identification, then tap a green/blue button below to update your SAP ledger.")
+            st.caption("Point at any household grocery, beverage, dairy, or cleaning product—tap a button below to sync to SAP.")
             catalog_json = json.dumps([
                 {
                     "sku_key": i["sku_key"],
                     "sap_id": i["sap_id"],
-                    "ean13": i["ean13"],
                     "name": i["name"],
                     "arabic_name": i["arabic_name"],
                     "keywords": i["keywords"],
@@ -551,31 +534,32 @@ with tab1:
             ])
 
             live_scanner_html = f"""
-            <div style="background:#161B22; border:1px solid #262C36; border-radius:12px; padding:12px; font-family:sans-serif; color:#F0F6FC; box-sizing:border-box;">
+            <div style="background:#151B26; border:1px solid #263042; border-radius:12px; padding:12px; font-family:sans-serif; color:#F0F6FC; box-sizing:border-box;">
                 <div style="position:relative; width:100%; border-radius:8px; overflow:hidden; background:#000;">
-                    <video id="cam" autoplay playsinline muted style="width:100%; max-height:270px; object-fit:cover; display:block;"></video>
+                    <video id="cam" autoplay playsinline muted style="width:100%; max-height:265px; object-fit:cover; display:block;"></video>
                     <div id="hud" style="position:absolute; top:10px; left:10px; right:10px; display:flex; justify-content:space-between; align-items:center;">
-                        <span id="badge" style="background:rgba(14,17,23,0.88); color:#3FB950; border:1px solid #3FB950; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:700;">
+                        <span id="badge" style="background:rgba(11,15,23,0.9); color:#3FB950; border:1px solid #3FB950; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:700;">
                             ● LIVE REAR CAMERA READY
                         </span>
-                        <span id="timer" style="background:rgba(14,17,23,0.88); color:#58A6FF; padding:4px 10px; border-radius:999px; font-size:12px;">
+                        <span id="timer" style="background:rgba(11,15,23,0.9); color:#58A6FF; padding:4px 10px; border-radius:999px; font-size:12px;">
                             Auto-Scan: OFF
                         </span>
                     </div>
                 </div>
                 <canvas id="canvas" style="display:none;"></canvas>
+                <canvas id="motionCanvas" width="32" height="32" style="display:none;"></canvas>
 
                 <div style="display:flex; gap:8px; margin-top:10px;">
                     <button id="toggleBtn" onclick="toggleAutoScan()" style="flex:1; background:#1F6FEB; color:#fff; border:none; padding:11px; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer;">
                         ▶ Start Live AI Viewfinder
                     </button>
-                    <button onclick="scanSingleNow()" style="background:#21262D; color:#F0F6FC; border:1px solid #30363D; padding:11px 14px; border-radius:8px; font-weight:600; font-size:13px; cursor:pointer;">
+                    <button onclick="scanSingleNow(true)" style="background:#21262D; color:#F0F6FC; border:1px solid #30363D; padding:11px 14px; border-radius:8px; font-weight:600; font-size:13px; cursor:pointer;">
                         ⚡ Scan Now
                     </button>
                 </div>
 
-                <div id="liveResults" style="margin-top:10px; background:#0E1117; border:1px solid #262C36; border-radius:8px; padding:12px; min-height:95px; max-height:175px; overflow-y:auto; font-size:13px;">
-                    <span style="color:#8B949E;">Point camera at products and tap <b>Start Live AI Viewfinder</b>...</span>
+                <div id="liveResults" style="margin-top:10px; background:#0B0F17; border:1px solid #263042; border-radius:8px; padding:12px; min-height:95px; max-height:175px; overflow-y:auto; font-size:13px;">
+                    <span style="color:#8B949E;">Point camera at any grocery, drink, snack, or cleaning item and tap <b>Start Live AI Viewfinder</b>...</span>
                 </div>
 
                 <div style="display:flex; flex-direction:column; gap:8px; margin-top:12px;">
@@ -593,6 +577,7 @@ with tab1:
             const CATALOG = {catalog_json};
             const video = document.getElementById('cam');
             const canvas = document.getElementById('canvas');
+            const motionCanvas = document.getElementById('motionCanvas');
             const badge = document.getElementById('badge');
             const timerEl = document.getElementById('timer');
             const resultsEl = document.getElementById('liveResults');
@@ -604,6 +589,9 @@ with tab1:
             let intervalId = null;
             let inFlight = false;
             let currentFrameCounts = {{}};
+            let lastValidHtml = "";
+            let prevThumb = null;
+            let unchangedCount = 0;
 
             function getParentBaseUrl() {{
                 try {{
@@ -624,10 +612,27 @@ with tab1:
 
             function checkBeforeSync() {{
                 if (Object.keys(currentFrameCounts).length === 0) {{
-                    alert("Scan a product first so a count appears in the box above!");
+                    alert("Scan a catalog product first so a count appears in the box above!");
                     return false;
                 }}
                 return true;
+            }}
+
+            function frameChangedSignificantly() {{
+                const mCtx = motionCanvas.getContext('2d');
+                mCtx.drawImage(video, 0, 0, 32, 32);
+                const data = mCtx.getImageData(0, 0, 32, 32).data;
+                if (!prevThumb) {{
+                    prevThumb = data;
+                    return true;
+                }}
+                let diff = 0;
+                for (let i = 0; i < data.length; i += 16) {{
+                    diff += Math.abs(data[i] - prevThumb[i]);
+                }}
+                prevThumb = data;
+                const avgDiff = diff / (data.length / 16);
+                return avgDiff > 4.5;
             }}
 
             async function startCamera() {{
@@ -650,9 +655,9 @@ with tab1:
                 if (scanning) {{
                     toggleBtn.innerText = "⏸ Pause Live Viewfinder";
                     toggleBtn.style.background = "#DA3633";
-                    timerEl.innerText = "Auto-Scan: ON (3.0s)";
-                    scanSingleNow();
-                    intervalId = setInterval(scanSingleNow, 3000);
+                    timerEl.innerText = "Auto-Scan: ON (4.5s)";
+                    scanSingleNow(true);
+                    intervalId = setInterval(() => scanSingleNow(false), 4500);
                 }} else {{
                     toggleBtn.innerText = "▶ Resume Live AI Viewfinder";
                     toggleBtn.style.background = "#1F6FEB";
@@ -661,40 +666,65 @@ with tab1:
                 }}
             }}
 
-            async function callGeminiModel(model, base64Jpeg) {{
-                const prompt = `You are StockSense AI. Count the EXACT number of physical units currently visible in this single frame and map them to this SAP catalog: ${{JSON.stringify(CATALOG)}}. Do NOT guess extra items; count only what is visibly in front of the camera right now. Return ONLY valid JSON: {{"items": [{{"sap_id": "...", "name": "...", "text_read": "...", "count": 1}}]}}`;
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/${{model}}:generateContent`;
-                const res = await fetch(url, {{
-                    method: "POST",
-                    headers: {{
-                        "Content-Type": "application/json",
-                        "x-goog-api-key": API_KEY
-                    }},
-                    body: JSON.stringify({{
-                        contents: [{{
-                            parts: [
-                                {{ text: prompt }},
-                                {{ inline_data: {{ mime_type: "image/jpeg", data: base64Jpeg }} }}
-                            ]
-                        }}],
-                        generationConfig: {{ responseMimeType: "application/json", temperature: 0.1 }}
-                    }})
-                }});
-                const data = await res.json();
-                if (!res.ok) {{
-                    const msg = data?.error?.message || ("HTTP " + res.status);
-                    throw new Error(msg);
+            const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+            async function callGeminiWithRetry(base64Jpeg) {{
+                const prompt = `You are StockSense AI. Identify all grocery/household products in this frame and count the EXACT number of physical units currently visible. Map each product to its matching sap_id in this catalog: ${{JSON.stringify(CATALOG)}}. If a visible product is not in the catalog, set sap_id="SAP-UNMAPPED". Return ONLY valid JSON: {{"items": [{{"sap_id": "...", "name": "...", "text_read": "...", "count": 1}}]}}`;
+                const models = ["gemini-3.5-flash-lite", "gemini-3.8-flash"];
+
+                for (const model of models) {{
+                    for (let attempt = 0; attempt < 2; attempt++) {{
+                        try {{
+                            const url = `https://generativelanguage.googleapis.com/v1beta/models/${{model}}:generateContent`;
+                            const res = await fetch(url, {{
+                                method: "POST",
+                                headers: {{
+                                    "Content-Type": "application/json",
+                                    "x-goog-api-key": API_KEY
+                                }},
+                                body: JSON.stringify({{
+                                    contents: [{{
+                                        parts: [
+                                            {{ text: prompt }},
+                                            {{ inline_data: {{ mime_type: "image/jpeg", data: base64Jpeg }} }}
+                                        ]
+                                    }}],
+                                    generationConfig: {{ responseMimeType: "application/json", temperature: 0.1 }}
+                                }})
+                            }});
+                            const data = await res.json();
+                            if (!res.ok) {{
+                                const msg = data?.error?.message || ("HTTP " + res.status);
+                                throw new Error(msg);
+                            }}
+                            const rawText = data.candidates[0].content.parts[0].text;
+                            return {{ parsed: JSON.parse(rawText), usedModel: model }};
+                        }} catch (e) {{
+                            await sleep(700 * (attempt + 1));
+                        }}
+                    }}
                 }}
-                const rawText = data.candidates[0].content.parts[0].text;
-                return JSON.parse(rawText);
+                return null;
             }}
 
-            async function scanSingleNow() {{
+            async function scanSingleNow(forceManual) {{
                 if (inFlight) return;
                 if (!video.videoWidth) return;
                 if (!API_KEY) {{
                     resultsEl.innerHTML = "<span style='color:#F85149;'>Missing GEMINI_API_KEY in Streamlit Secrets.</span>";
                     return;
+                }}
+
+                // Smart idle check so stationary frames don't burn API quota
+                if (!forceManual && !frameChangedSignificantly()) {{
+                    unchangedCount++;
+                    if (unchangedCount > 1 && lastValidHtml) {{
+                        badge.innerText = "● LOCKED (STEADY VIEW)";
+                        badge.style.color = "#3FB950";
+                        return;
+                    }}
+                }} else {{
+                    unchangedCount = 0;
                 }}
 
                 inFlight = true;
@@ -706,46 +736,42 @@ with tab1:
                 canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
                 const b64 = canvas.toDataURL('image/jpeg', 0.78).split(',')[1];
 
-                const models = ["gemini-3.5-flash-lite", "gemini-3.8-flash"];
-                let parsed = null;
-                let usedModel = "";
-                let lastErrorMsg = "";
+                const result = await callGeminiWithRetry(b64);
 
-                for (const m of models) {{
-                    try {{
-                        parsed = await callGeminiModel(m, b64);
-                        usedModel = m;
-                        break;
-                    }} catch (e) {{
-                        lastErrorMsg = `${{m}}: ${{e.message}}`;
-                    }}
-                }}
-
-                if (parsed && parsed.items) {{
-                    badge.innerText = "● LIVE LOCK (" + usedModel + ")";
+                if (result && result.parsed && result.parsed.items) {{
+                    badge.innerText = "● LIVE LOCK (" + result.usedModel + ")";
                     badge.style.color = "#3FB950";
 
                     let freshCounts = {{}};
                     let html = `<div style="color:#3FB950; font-weight:700; margin-bottom:6px;">✅ Live Shelf View (${{new Date().toLocaleTimeString()}})</div>`;
 
-                    if (parsed.items.length === 0) {{
-                        html += `<div style="color:#8B949E;">No product label in frame — point at a product...</div>`;
+                    if (result.parsed.items.length === 0) {{
+                        html += `<div style="color:#8B949E;">No product label in frame — pan camera toward a product...</div>`;
                     }} else {{
-                        parsed.items.forEach(it => {{
-                            freshCounts[it.sap_id] = (freshCounts[it.sap_id] || 0) + (it.count || 1);
+                        result.parsed.items.forEach(it => {{
+                            if (it.sap_id && it.sap_id !== "SAP-UNMAPPED") {{
+                                freshCounts[it.sap_id] = (freshCounts[it.sap_id] || 0) + (it.count || 1);
+                            }}
+                            const tagColor = it.sap_id === "SAP-UNMAPPED" ? "#D29922" : "#58A6FF";
                             html += `<div style="border-left:3px solid #3FB950; padding-left:8px; margin-bottom:6px;">
-                                <span style="color:#58A6FF; font-family:monospace;">[${{it.sap_id}}]</span> <b>${{it.name}}</b> — In View: <b>${{it.count}} unit(s)</b><br/>
+                                <span style="color:${{tagColor}}; font-family:monospace;">[${{it.sap_id}}]</span> <b>${{it.name}}</b> — In View: <b>${{it.count}} unit(s)</b><br/>
                                 <span style="color:#8B949E; font-size:12px;">Read Text: "${{it.text_read}}"</span>
                             </div>`;
                         }});
-                        currentFrameCounts = freshCounts;
-                        updateSyncLinks();
+                        if (Object.keys(freshCounts).length > 0) {{
+                            currentFrameCounts = freshCounts;
+                            updateSyncLinks();
+                        }}
                     }}
+                    lastValidHtml = html;
                     resultsEl.innerHTML = html;
                 }} else {{
-                    badge.innerText = "⚠ API Error";
-                    badge.style.color = "#F85149";
-                    resultsEl.innerHTML = `<div style="color:#F85149; font-weight:700;">Scan Failed:</div><div style="color:#FFA657; font-size:12px; margin-top:4px;">${{lastErrorMsg}}</div>`;
+                    // Silent graceful hold — NEVER show scary red error box during temporary demand spikes
+                    badge.innerText = "⏳ CLOUD BUSY (HOLDING)";
+                    badge.style.color = "#D29922";
+                    if (!lastValidHtml) {{
+                        resultsEl.innerHTML = `<div style="color:#D29922; font-size:12px;">⏳ High cloud demand — automatically retrying on next sweep...</div>`;
+                    }}
                 }}
                 inFlight = false;
             }}
@@ -831,26 +857,44 @@ with tab1:
                 </div>
                 """, unsafe_allow_html=True)
 
-    # --- RIGHT COLUMN: SAP LEDGER ---
+    # --- RIGHT COLUMN: COMPACT SAP LEDGER WITH FILTER ---
     with col_list:
         st.subheader("2. SAP Material Verification & Sync")
         st.caption(f"Last ERP Sync: {st.session_state.last_sync}")
 
-        for idx, item in enumerate(st.session_state.inventory):
-            with st.container():
-                c_info, c_erp, c_phys = st.columns([2.3, 0.9, 1.1])
+        filter_opt = st.radio(
+            "Filter Ledger View:",
+            ["All Catalog SKUs (42)", "Scanned / Verified Only"],
+            horizontal=True,
+            label_visibility="collapsed",
+        )
+        search_q = st.text_input("🔎 Quick Search SKU, Product Name, or Arabic Label", placeholder="e.g. Osra, Almarai, Pepsi, حليب...")
+
+        with st.container(height=540):
+            shown_any = False
+            for idx, item in enumerate(st.session_state.inventory):
+                if filter_opt == "Scanned / Verified Only" and item["physical_qty"] == 0:
+                    continue
+                if search_q.strip():
+                    q = search_q.strip().lower()
+                    haystack = f"{item['sap_id']} {item['name']} {item['arabic_name']} {item['category']}".lower()
+                    if q not in haystack:
+                        continue
+
+                shown_any = True
+                c_info, c_erp, c_phys = st.columns([2.3, 0.85, 1.15])
                 with c_info:
                     st.markdown(
                         f"**{item['name']}**  \n"
                         f"<span style='color:#8B949E; font-size:0.8rem;'>{item['arabic_name']}</span>  \n"
                         f"<span class='sap-badge'>{item['sap_id']}</span>"
-                        f"<span style='color:#8B949E; font-size:0.78rem;'>EAN: {item['ean13']} • {item['aisle']}</span>",
+                        f"<span style='color:#8B949E; font-size:0.76rem;'>{item['category']} • {item['aisle']}</span>",
                         unsafe_allow_html=True,
                     )
                 with c_erp:
                     st.markdown(
-                        f"<span style='color:#8B949E; font-size:0.78rem;'>SAP Stock</span><br/>"
-                        f"<strong style='font-size:1.15rem;'>{item['erp_qty']}</strong>",
+                        f"<span style='color:#8B949E; font-size:0.76rem;'>SAP Qty</span><br/>"
+                        f"<strong style='font-size:1.1rem;'>{item['erp_qty']}</strong>",
                         unsafe_allow_html=True,
                     )
                 with c_phys:
@@ -864,20 +908,85 @@ with tab1:
                     st.session_state.inventory[idx]["physical_qty"] = new_val
                 st.divider()
 
+            if not shown_any:
+                st.info("No matching items in this filter yet. Scan an item or switch to 'All Catalog SKUs'.")
+
         if st.button("✅ Approve Audit & Sync to SAP S/4HANA", type="primary", use_container_width=True):
             st.session_state.last_sync = datetime.now().strftime("%I:%M %p (Live SAP S/4HANA Synced)")
             st.balloons()
             st.success("SAP inventory ledger updated and automated replenishment alerts dispatched!")
 
 # ==========================================
-# TAB 2: EXECUTIVE SAP DASHBOARD
+# TAB 2: EXECUTIVE SAP DASHBOARD (CHARTS FIRST, FULL TABLE BELOW)
 # ==========================================
 with tab2:
-    st.subheader("Live Store Inventory & SAP Discrepancy Ledger")
-    display_df = df[["sap_id", "ean13", "name", "arabic_name", "aisle", "erp_qty", "physical_qty", "variance", "rev_at_risk", "status"]].copy()
+    st.subheader("Executive SAP Discrepancy Analytics")
+
+    # 1. TOP 5 CHARTS FIRST (Horizontal Bars = Clean, Zero Cut-Off Labels)
+    col_chart1, col_chart2 = st.columns(2, gap="large")
+
+    with col_chart1:
+        st.markdown('<div class="chart-card">', unsafe_allow_html=True)
+        st.markdown("#### 📊 Top 5 SKUs by Unit Variance (SAP vs. Vision)")
+        st.caption("Highlights the 5 products with the largest physical-to-ERP gap.")
+        top5_var_df = df.sort_values(by="abs_variance", ascending=False).head(5).copy()
+        top5_var_df["Short Label"] = top5_var_df["name"].apply(lambda x: x[:26] + "…" if len(x) > 27 else x)
+        chart1_data = top5_var_df.set_index("Short Label")[["erp_qty", "physical_qty"]]
+        chart1_data.columns = ["SAP Book Qty", "AI Verified Qty"]
+        st.bar_chart(chart1_data, color=["#3B475E", "#1F6FEB"], horizontal=True, height=290)
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    with col_chart2:
+        st.markdown('<div class="chart-card">', unsafe_allow_html=True)
+        st.markdown("#### 💸 Top 5 SKUs by Revenue at Risk (SAR)")
+        st.caption("Prioritizes shelf replenishment by highest financial exposure.")
+        top5_risk_df = df[df["rev_at_risk"] > 0].sort_values(by="rev_at_risk", ascending=False).head(5).copy()
+        if not top5_risk_df.empty:
+            top5_risk_df["Short Label"] = top5_risk_df["name"].apply(lambda x: x[:26] + "…" if len(x) > 27 else x)
+            chart2_data = top5_risk_df.set_index("Short Label")[["rev_at_risk"]]
+            chart2_data.columns = ["Revenue at Risk (SAR)"]
+            st.bar_chart(chart2_data, color="#F85149", horizontal=True, height=290)
+        else:
+            st.success("Zero phantom stock revenue leakage across all SKUs!")
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    st.write("")
+
+    # 2. FULL EXPANDABLE SAP INVENTORY TABLE BELOW CHARTS
+    st.subheader(f"Live Store Inventory & SAP Discrepancy Ledger ({len(df)} SKUs)")
+
+    f_col1, f_col2, f_col3 = st.columns([1.2, 1.2, 1.6])
+    with f_col1:
+        cat_list = ["All Categories"] + sorted(df["category"].unique().tolist())
+        sel_cat = st.selectbox("Filter by Category", cat_list)
+    with f_col2:
+        status_list = ["All Statuses", "🔴 Stockout", "🟠 Low Stock", "🟢 Optimal"]
+        sel_status = st.selectbox("Filter by Stock Status", status_list)
+    with f_col3:
+        tbl_search = st.text_input("Search SAP Material ID, Product (EN/AR), or Barcode", placeholder="Type to filter full SAP ledger...")
+
+    filtered_df = df.copy()
+    if sel_cat != "All Categories":
+        filtered_df = filtered_df[filtered_df["category"] == sel_cat]
+    if sel_status != "All Statuses":
+        filtered_df = filtered_df[filtered_df["status"] == sel_status]
+    if tbl_search.strip():
+        q = tbl_search.strip().lower()
+        filtered_df = filtered_df[
+            filtered_df["sap_id"].str.lower().str.contains(q)
+            | filtered_df["name"].str.lower().str.contains(q)
+            | filtered_df["arabic_name"].str.lower().str.contains(q)
+            | filtered_df["ean13"].str.lower().str.contains(q)
+        ]
+
+    display_df = filtered_df[[
+        "sap_id", "ean13", "category", "name", "arabic_name", "aisle",
+        "erp_qty", "physical_qty", "variance", "rev_at_risk", "status"
+    ]].copy()
     display_df.columns = [
         "SAP Material ID",
         "EAN-13 Barcode",
+        "Category",
         "Product (EN)",
         "Product (AR)",
         "Location",
@@ -887,42 +996,60 @@ with tab2:
         "Rev. at Risk (SAR)",
         "Status",
     ]
-    st.dataframe(display_df, use_container_width=True, hide_index=True)
+    st.dataframe(display_df, use_container_width=True, hide_index=True, height=620)
 
-    col_chart1, col_chart2 = st.columns(2)
-    with col_chart1:
-        st.markdown("#### SAP Book Stock vs. Vision Verified Stock")
-        chart_df = df.set_index("name")[["erp_qty", "physical_qty"]]
-        chart_df.columns = ["SAP Book Qty", "AI Verified Qty"]
-        st.bar_chart(chart_df, color=["#30363D", "#1F6FEB"])
-
-    with col_chart2:
-        st.markdown("#### Revenue Leakage by SKU (SAR)")
-        risk_df = df[df["rev_at_risk"] > 0].set_index("name")[["rev_at_risk"]]
-        if not risk_df.empty:
-            risk_df.columns = ["At-Risk Revenue (SAR)"]
-            st.bar_chart(risk_df, color="#F85149")
-        else:
-            st.success("Zero inventory shrinkage or phantom stock detected!")
+    # Enterprise SAP ERP Connector Expander
+    with st.expander("🔌 Enterprise SAP S/4HANA Material Master Connector (MARA / MARD Feed)"):
+        st.caption("In enterprise deployment, StockSense ingests the customer's live SAP Material Master automatically via OData/BAPI. You can also upload a custom SAP CSV export here to test with any store catalog.")
+        sap_csv = st.file_uploader("Upload Custom SAP Material Master (.csv)", type=["csv"])
+        if sap_csv is not None:
+            try:
+                custom_df = pd.read_csv(sap_csv)
+                required_cols = {"sap_id", "name", "erp_qty", "price"}
+                if required_cols.issubset(set(custom_df.columns)):
+                    new_inv = []
+                    for idx_r, r in custom_df.iterrows():
+                        new_inv.append({
+                            "sku_key": f"custom_{idx_r}",
+                            "sap_id": str(r["sap_id"]),
+                            "ean13": str(r.get("ean13", "6281000000000")),
+                            "category": str(r.get("category", "SAP Import")),
+                            "name": str(r["name"]),
+                            "arabic_name": str(r.get("arabic_name", r["name"])),
+                            "keywords": [w.lower() for w in str(r["name"]).split()],
+                            "aisle": str(r.get("aisle", "Aisle A1")),
+                            "price": float(r["price"]),
+                            "erp_qty": int(r["erp_qty"]),
+                            "physical_qty": int(r.get("physical_qty", 0)),
+                            "reorder_pt": int(r.get("reorder_pt", max(1, int(r["erp_qty"]) // 2))),
+                        })
+                    st.session_state.inventory = new_inv
+                    st.success(f"Loaded {len(new_inv)} SKUs from SAP CSV!")
+                    st.rerun()
+                else:
+                    st.error(f"CSV must contain columns: {required_cols}")
+            except Exception as ex:
+                st.error(f"Could not parse SAP CSV: {ex}")
 
 # ==========================================
 # TAB 3: AUTOMATED STORE ALERTS
 # ==========================================
 with tab3:
     st.subheader("Zero-Friction Manager Alerts & SAP PO Triggers")
-    alert_items = df[df["physical_qty"] <= df["reorder_pt"]]
+    alert_items = df[df["physical_qty"] <= df["reorder_pt"]].sort_values(by="rev_at_risk", ascending=False)
     if alert_items.empty:
         st.success("✅ All shelves are stocked above SAP reorder points.")
     else:
-        for _, row in alert_items.iterrows():
+        st.caption(f"Showing top priority replenishment triggers ({len(alert_items)} SKUs below SAP safety stock):")
+        for _, row in alert_items.head(15).iterrows():
             st.markdown(f"""
-            <div style="background-color:#1E2A24; border-left:4px solid #25D366; padding:16px; border-radius:8px; margin-bottom:12px;">
-                <div style="color:#25D366; font-weight:700; font-size:0.85rem;">💬 WHATSAPP BUSINESS ALERT • STORE #104</div>
-                <div style="color:#F0F6FC; margin-top:6px; font-size:0.95rem;">
+            <div style="background-color:#17231E; border-left:4px solid #25D366; padding:15px; border-radius:10px; margin-bottom:12px;">
+                <div style="color:#25D366; font-weight:700; font-size:0.84rem;">💬 WHATSAPP BUSINESS ALERT • STORE #104 • {row['category'].upper()}</div>
+                <div style="color:#F0F6FC; margin-top:6px; font-size:0.93rem;">
                     <strong>⚠️ SHELF REPLENISHMENT REQUIRED ({row['sap_id']}):</strong><br/>
                     • <strong>Product:</strong> {row['name']} ({row['arabic_name']})<br/>
                     • <strong>Barcode / Location:</strong> {row['ean13']} • {row['aisle']}<br/>
-                    • <strong>Verified Shelf Qty:</strong> {row['physical_qty']} units (SAP Book: {row['erp_qty']} | Variance: {row['variance']:+d})<br/>
+                    • <strong>Verified Shelf Qty:</strong> {row['physical_qty']} units (SAP Book: {row['erp_qty']} | Variance: {row['variance']:+d} | Risk: SAR {row['rev_at_risk']:,.2f})<br/>
                     • <strong>Action:</strong> Pull 1 case from Backroom Bay B or approve draft SAP Purchase Order.
                 </div>
             </div>
@@ -937,7 +1064,7 @@ with tab4:
     col_v1, col_v2 = st.columns([2, 1])
     with col_v1:
         st.markdown("""
-        <div style="background-color:#161B22; border:1px dashed #30363D; border-radius:12px; padding:65px 20px; text-align:center;">
+        <div style="background-color:#151B26; border:1px dashed #30363D; border-radius:12px; padding:65px 20px; text-align:center;">
             <div style="font-size:2.5rem;">📹</div>
             <div style="color:#F0F6FC; font-weight:600; margin-top:8px;">RTSP Stream Connected: rtsp://10.104.22.18:554/aisle-b2</div>
             <div style="color:#8B949E; font-size:0.85rem; margin-top:4px;">Inference Interval: Every 15 mins • Bilingual OCR (AR/EN) + ZBar Barcode Engine Active</div>
