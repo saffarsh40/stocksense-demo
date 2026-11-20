@@ -24,7 +24,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- COMMERCIAL SAAS CUSTOM CSS (MOBILE-OPTIMIZED) ---
+# --- COMMERCIAL SAAS CUSTOM CSS ---
 st.markdown("""
 <style>
     .stApp {
@@ -216,6 +216,10 @@ if "last_barcode_hits" not in st.session_state:
     st.session_state.last_barcode_hits = []
 if "active_model_used" not in st.session_state:
     st.session_state.active_model_used = "gemini-3.5-flash-lite"
+if "processed_live_event_id" not in st.session_state:
+    st.session_state.processed_live_event_id = None
+if "live_sync_feedback" not in st.session_state:
+    st.session_state.live_sync_feedback = ""
 
 # --- SIDEBAR SETTINGS ---
 with st.sidebar:
@@ -236,6 +240,7 @@ with st.sidebar:
         shared_db["last_updated_ts"] = time.time()
         st.session_state.last_annotated_img = None
         st.session_state.last_barcode_hits = []
+        st.session_state.live_sync_feedback = ""
         st.rerun()
 
 # --- BARCODE & MULTI-MODEL RESILIENT VISION ENGINE ---
@@ -309,7 +314,7 @@ def call_gemini_with_failover(client: genai.Client, contents: list) -> ShelfScan
                     continue
                 raise err
 
-    raise RuntimeError(f"Temporary cloud traffic spike. Please tap Scan again in a few seconds. ({last_err})")
+    raise RuntimeError(f"Temporary cloud traffic spike. Please retry in a few seconds. ({last_err})")
 
 
 def analyze_media_frames(pil_images: List[Image.Image], catalog: list, api_key: str, is_video_walkthrough: bool = False):
@@ -432,94 +437,33 @@ st.markdown(f"""
 
 # --- NAVIGATION TABS ---
 tab1, tab2, tab3, tab4 = st.tabs([
-    "📱 Field Auditor Scanner",
+    "🎥 Live Field Auditor Scanner",
     "📊 Manager Executive Dashboard (Live)",
     "📲 Automated Store Alerts",
     "📹 Live Aisle RTSP Feed",
 ])
 
 # ==========================================
-# TAB 1: MOBILE-FRIENDLY FIELD AUDITOR SCANNER
+# TAB 1: CONTINUOUS LIVE VIEWFINDER (DEFAULT) + DIRECT SERVER BRIDGE
 # ==========================================
 with tab1:
     col_cam, col_list = st.columns([1.1, 1], gap="large")
 
     with col_cam:
-        st.subheader("1. Field Shelf Scanner (42 Supermarket SKUs)")
+        st.subheader("1. Live Rear-Camera Shelf Scanner")
         audit_mode = st.radio(
             "Capture Mode:",
             [
-                "📸 Instant Mobile Snap & Sync (1-Tap SAP Update)",
-                "🎥 Continuous Live Viewfinder (Preview Only)",
+                "🎥 Live Rear-Camera Auto-Scanner (Instant Push)",
                 "🎞️ Aisle Walk-Through Video (100+ Items)",
+                "📸 Multi-Shelf Photo Batch",
             ],
             horizontal=False,
         )
 
-        accumulate_mode = st.checkbox(
-            "➕ Add newly scanned items to existing verified total (uncheck to overwrite)",
-            value=True,
-        )
-
-        # --- MODE A: 1-TAP NATIVE MOBILE SNAP & INSTANT SERVER SYNC ---
-        if audit_mode == "📸 Instant Mobile Snap & Sync (1-Tap SAP Update)":
-            st.caption("Snap any shelf or product—it immediately decodes Arabic/English labels, maps to SAP, and updates the Manager's laptop dashboard in real time.")
-            cam_photo = st.camera_input("Point rear camera at product(s) and tap Take Photo")
-
-            if cam_photo is not None:
-                img_pil = Image.open(cam_photo)
-                if st.button("🚀 Verify & Push to Live SAP Dashboard", type="primary", use_container_width=True):
-                    with st.spinner("Reading Arabic/English labels & syncing to Manager Dashboard..."):
-                        try:
-                            first_ann, b_hits, scan_res = analyze_media_frames(
-                                [img_pil],
-                                shared_db["inventory"],
-                                active_gemini_key,
-                                is_video_walkthrough=False,
-                            )
-                            st.session_state.last_annotated_img = first_ann
-                            st.session_state.last_barcode_hits = b_hits
-                            matched_list = update_shared_inventory(
-                                scan_res, b_hits, accumulate=accumulate_mode, source_label="Mobile Field Snap"
-                            )
-                            if matched_list:
-                                st.success("✅ Synced to Manager Dashboard: " + " | ".join(matched_list))
-                            else:
-                                st.warning("Product read, but not in the 42-SKU catalog yet. Check Audit Trail below.")
-                            st.rerun()
-                        except Exception as e:
-                            st.error(f"Scan error: {e}")
-
-            st.markdown("---")
-            uploaded_files = st.file_uploader(
-                "Or upload 1–10 shelf photos from gallery",
-                type=["jpg", "jpeg", "png", "webp"],
-                accept_multiple_files=True,
-            )
-            if uploaded_files:
-                pil_batch = [Image.open(f) for f in uploaded_files]
-                if st.button(f"🔍 Scan {len(pil_batch)} Photo(s) & Sync to SAP", use_container_width=True):
-                    with st.spinner("Processing batch & updating shared SAP ledger..."):
-                        try:
-                            first_ann, b_hits, scan_res = analyze_media_frames(
-                                pil_batch,
-                                shared_db["inventory"],
-                                active_gemini_key,
-                                is_video_walkthrough=(len(pil_batch) > 1),
-                            )
-                            st.session_state.last_annotated_img = first_ann
-                            st.session_state.last_barcode_hits = b_hits
-                            matched_list = update_shared_inventory(
-                                scan_res, b_hits, accumulate=accumulate_mode, source_label="Batch Photo Upload"
-                            )
-                            st.success(f"✅ Batch synced ({len(matched_list)} SKU(s) updated on Manager Dashboard)!")
-                            st.rerun()
-                        except Exception as e:
-                            st.error(f"Scan error: {e}")
-
-        # --- MODE B: CONTINUOUS LIVE VIEWFINDER ---
-        elif audit_mode == "🎥 Continuous Live Viewfinder (Preview Only)":
-            st.caption("Real-time continuous viewfinder for live shelf walkthrough demonstrations.")
+        # --- MODE A: CONTINUOUS LIVE VIEWFINDER WITH DIRECT STREAMLIT POSTMESSAGE BRIDGE ---
+        if audit_mode == "🎥 Live Rear-Camera Auto-Scanner (Instant Push)":
+            st.caption("Point camera at products—when detected in the box below, tap the green or blue button to push straight to the Manager's laptop dashboard.")
             catalog_json = json.dumps([
                 {
                     "sku_key": i["sku_key"],
@@ -534,7 +478,7 @@ with tab1:
             live_scanner_html = f"""
             <div style="background:#151B26; border:1px solid #263042; border-radius:12px; padding:12px; font-family:sans-serif; color:#F0F6FC; box-sizing:border-box;">
                 <div style="position:relative; width:100%; border-radius:8px; overflow:hidden; background:#000;">
-                    <video id="cam" autoplay playsinline muted style="width:100%; max-height:265px; object-fit:cover; display:block;"></video>
+                    <video id="cam" autoplay playsinline muted style="width:100%; max-height:260px; object-fit:cover; display:block;"></video>
                     <div id="hud" style="position:absolute; top:10px; left:10px; right:10px; display:flex; justify-content:space-between; align-items:center;">
                         <span id="badge" style="background:rgba(11,15,23,0.9); color:#3FB950; border:1px solid #3FB950; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:700;">
                             ● LIVE CAMERA READY
@@ -545,36 +489,109 @@ with tab1:
                     </div>
                 </div>
                 <canvas id="canvas" style="display:none;"></canvas>
+                <canvas id="motionCanvas" width="32" height="32" style="display:none;"></canvas>
+
                 <div style="display:flex; gap:8px; margin-top:10px;">
                     <button id="toggleBtn" onclick="toggleAutoScan()" style="flex:1; background:#1F6FEB; color:#fff; border:none; padding:11px; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer;">
-                        ▶ Start Live Viewfinder
+                        ▶ Start Live AI Viewfinder
                     </button>
-                    <button onclick="scanSingleNow()" style="background:#21262D; color:#F0F6FC; border:1px solid #30363D; padding:11px 14px; border-radius:8px; font-weight:600; font-size:13px; cursor:pointer;">
+                    <button onclick="scanSingleNow(true)" style="background:#21262D; color:#F0F6FC; border:1px solid #30363D; padding:11px 14px; border-radius:8px; font-weight:600; font-size:13px; cursor:pointer;">
                         ⚡ Scan Now
                     </button>
                 </div>
-                <div id="liveResults" style="margin-top:10px; background:#0B0F17; border:1px solid #263042; border-radius:8px; padding:12px; min-height:95px; font-size:13px;">
-                    <span style="color:#8B949E;">Point camera at products and tap <b>Start Live Viewfinder</b>...</span>
+
+                <div id="liveResults" style="margin-top:10px; background:#0B0F17; border:1px solid #263042; border-radius:8px; padding:12px; min-height:95px; max-height:175px; overflow-y:auto; font-size:13px;">
+                    <span style="color:#8B949E;">Point camera at products and tap <b>Start Live AI Viewfinder</b>...</span>
                 </div>
+
+                <div style="display:flex; flex-direction:column; gap:8px; margin-top:12px;">
+                    <button onclick="sendLiveSync('set')" style="width:100%; background:#238636; color:#FFFFFF; border:none; padding:13px; border-radius:8px; font-weight:700; font-size:14px; cursor:pointer;">
+                        📥 Update SAP Ledger with Live Count
+                    </button>
+                    <button onclick="sendLiveSync('add')" style="width:100%; background:#1F6FEB; color:#FFFFFF; border:none; padding:13px; border-radius:8px; font-weight:700; font-size:14px; cursor:pointer;">
+                        ➕ Add Live Count to Existing SAP Total
+                    </button>
+                </div>
+                <div id="pushStatus" style="margin-top:8px; text-align:center; font-size:12px; color:#3FB950; font-weight:600;"></div>
             </div>
+
             <script>
+            // Official Streamlit Component PostMessage Bridge
+            function sendMessageToStreamlitClient(type, data) {{
+                const outData = Object.assign({{
+                    isStreamlitMessage: true,
+                    type: type,
+                }}, data);
+                window.parent.postMessage(outData, "*");
+            }}
+            sendMessageToStreamlitClient("streamlit:componentReady", {{ apiVersion: 1 }});
+            sendMessageToStreamlitClient("streamlit:setFrameHeight", {{ height: 650 }});
+
             const API_KEY = {json.dumps(active_gemini_key)};
             const CATALOG = {catalog_json};
             const video = document.getElementById('cam');
             const canvas = document.getElementById('canvas');
+            const motionCanvas = document.getElementById('motionCanvas');
             const badge = document.getElementById('badge');
             const timerEl = document.getElementById('timer');
             const resultsEl = document.getElementById('liveResults');
             const toggleBtn = document.getElementById('toggleBtn');
-            let scanning = false, intervalId = null, inFlight = false, lastValidHtml = "";
+            const pushStatus = document.getElementById('pushStatus');
+
+            let scanning = false;
+            let intervalId = null;
+            let inFlight = false;
+            let currentFrameCounts = {{}};
+            let currentFrameItems = [];
+            let lastValidHtml = "";
+            let prevThumb = null;
+            let unchangedCount = 0;
+
+            function sendLiveSync(mode) {{
+                if (Object.keys(currentFrameCounts).length === 0) {{
+                    pushStatus.style.color = "#D29922";
+                    pushStatus.innerText = "⚠ Point camera at a catalog product first so a count appears above.";
+                    return;
+                }}
+                pushStatus.style.color = "#3FB950";
+                pushStatus.innerText = "🚀 Pushing live counts to Manager Dashboard...";
+                sendMessageToStreamlitClient("streamlit:setComponentValue", {{
+                    value: {{
+                        event_id: Date.now() + "_" + Math.random().toString(36).slice(2, 7),
+                        mode: mode,
+                        counts: currentFrameCounts,
+                        items: currentFrameItems
+                    }}
+                }});
+            }}
+
+            function frameChangedSignificantly() {{
+                const mCtx = motionCanvas.getContext('2d');
+                mCtx.drawImage(video, 0, 0, 32, 32);
+                const data = mCtx.getImageData(0, 0, 32, 32).data;
+                if (!prevThumb) {{
+                    prevThumb = data;
+                    return true;
+                }}
+                let diff = 0;
+                for (let i = 0; i < data.length; i += 16) {{
+                    diff += Math.abs(data[i] - prevThumb[i]);
+                }}
+                prevThumb = data;
+                return (diff / (data.length / 16)) > 4.5;
+            }}
 
             async function startCamera() {{
                 try {{
-                    const stream = await navigator.mediaDevices.getUserMedia({{ video: {{ facingMode: {{ ideal: "environment" }} }}, audio: false }});
+                    const stream = await navigator.mediaDevices.getUserMedia({{
+                        video: {{ facingMode: {{ ideal: "environment" }}, width: {{ ideal: 1280 }} }},
+                        audio: false
+                    }});
                     video.srcObject = stream;
                 }} catch (err) {{
                     badge.innerText = "⚠ Camera blocked";
                     badge.style.color = "#F85149";
+                    resultsEl.innerHTML = `<span style="color:#F85149;">Camera error: ${{err.message}}</span>`;
                 }}
             }}
             startCamera();
@@ -582,73 +599,172 @@ with tab1:
             function toggleAutoScan() {{
                 scanning = !scanning;
                 if (scanning) {{
-                    toggleBtn.innerText = "⏸ Pause Viewfinder";
+                    toggleBtn.innerText = "⏸ Pause Live Viewfinder";
                     toggleBtn.style.background = "#DA3633";
-                    timerEl.innerText = "Auto: ON (4.5s)";
-                    scanSingleNow();
-                    intervalId = setInterval(scanSingleNow, 4500);
+                    timerEl.innerText = "Auto-Scan: ON (4.0s)";
+                    scanSingleNow(true);
+                    intervalId = setInterval(() => scanSingleNow(false), 4000);
                 }} else {{
-                    toggleBtn.innerText = "▶ Resume Live Viewfinder";
+                    toggleBtn.innerText = "▶ Resume Live AI Viewfinder";
                     toggleBtn.style.background = "#1F6FEB";
-                    timerEl.innerText = "Auto: PAUSED";
+                    timerEl.innerText = "Auto-Scan: PAUSED";
                     clearInterval(intervalId);
                 }}
             }}
 
-            async function scanSingleNow() {{
+            const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+            async function callGeminiWithRetry(base64Jpeg) {{
+                const prompt = `You are StockSense AI. Identify all grocery/household products in this frame and count the EXACT number of physical units currently visible. Map each product to its matching sap_id in this catalog: ${{JSON.stringify(CATALOG)}}. If a visible product is not in the catalog, set sap_id="SAP-UNMAPPED". Return ONLY valid JSON: {{"items": [{{"sap_id": "...", "name": "...", "text_read": "...", "count": 1}}]}}`;
+                const models = ["gemini-3.5-flash-lite", "gemini-3.8-flash"];
+
+                for (const model of models) {{
+                    for (let attempt = 0; attempt < 2; attempt++) {{
+                        try {{
+                            const url = `https://generativelanguage.googleapis.com/v1beta/models/${{model}}:generateContent`;
+                            const res = await fetch(url, {{
+                                method: "POST",
+                                headers: {{
+                                    "Content-Type": "application/json",
+                                    "x-goog-api-key": API_KEY
+                                }},
+                                body: JSON.stringify({{
+                                    contents: [{{
+                                        parts: [
+                                            {{ text: prompt }},
+                                            {{ inline_data: {{ mime_type: "image/jpeg", data: base64Jpeg }} }}
+                                        ]
+                                    }}],
+                                    generationConfig: {{ responseMimeType: "application/json", temperature: 0.1 }}
+                                }})
+                            }});
+                            const data = await res.json();
+                            if (!res.ok) throw new Error(data?.error?.message || ("HTTP " + res.status));
+                            const rawText = data.candidates[0].content.parts[0].text;
+                            return {{ parsed: JSON.parse(rawText), usedModel: model }};
+                        }} catch (e) {{
+                            await sleep(650 * (attempt + 1));
+                        }}
+                    }}
+                }}
+                return null;
+            }}
+
+            async function scanSingleNow(forceManual) {{
                 if (inFlight || !video.videoWidth || !API_KEY) return;
+
+                if (!forceManual && !frameChangedSignificantly()) {{
+                    unchangedCount++;
+                    if (unchangedCount > 1 && lastValidHtml) {{
+                        badge.innerText = "● LOCKED (STEADY VIEW)";
+                        badge.style.color = "#3FB950";
+                        return;
+                    }}
+                }} else {{
+                    unchangedCount = 0;
+                }}
+
                 inFlight = true;
-                badge.innerText = "🔍 READING...";
+                badge.innerText = "🔍 READING LABELS...";
                 badge.style.color = "#58A6FF";
+
                 canvas.width = 512;
                 canvas.height = Math.round((video.videoHeight / video.videoWidth) * 512);
                 canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
                 const b64 = canvas.toDataURL('image/jpeg', 0.78).split(',')[1];
-                const prompt = `You are StockSense AI. Count exact physical units visible and map to SAP catalog: ${{JSON.stringify(CATALOG)}}. Return JSON: {{"items": [{{"sap_id": "...", "name": "...", "text_read": "...", "count": 1}}]}}`;
 
-                for (const model of ["gemini-3.5-flash-lite", "gemini-3.8-flash"]) {{
-                    try {{
-                        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${{model}}:generateContent`, {{
-                            method: "POST",
-                            headers: {{ "Content-Type": "application/json", "x-goog-api-key": API_KEY }},
-                            body: JSON.stringify({{
-                                contents: [{{ parts: [{{ text: prompt }}, {{ inline_data: {{ mime_type: "image/jpeg", data: b64 }} }}] }}],
-                                generationConfig: {{ responseMimeType: "application/json", temperature: 0.1 }}
-                            }})
+                const result = await callGeminiWithRetry(b64);
+
+                if (result && result.parsed && result.parsed.items) {{
+                    badge.innerText = "● LIVE LOCK (" + result.usedModel + ")";
+                    badge.style.color = "#3FB950";
+
+                    let freshCounts = {{}};
+                    let html = `<div style="color:#3FB950; font-weight:700; margin-bottom:6px;">✅ Live Shelf View (${{new Date().toLocaleTimeString()}})</div>`;
+
+                    if (result.parsed.items.length === 0) {{
+                        html += `<div style="color:#8B949E;">No product label in frame — pan camera toward a product...</div>`;
+                    }} else {{
+                        currentFrameItems = result.parsed.items;
+                        result.parsed.items.forEach(it => {{
+                            if (it.sap_id && it.sap_id !== "SAP-UNMAPPED") {{
+                                freshCounts[it.sap_id] = (freshCounts[it.sap_id] || 0) + (it.count || 1);
+                            }}
+                            const tagColor = it.sap_id === "SAP-UNMAPPED" ? "#D29922" : "#58A6FF";
+                            html += `<div style="border-left:3px solid #3FB950; padding-left:8px; margin-bottom:6px;">
+                                <span style="color:${{tagColor}}; font-family:monospace;">[${{it.sap_id}}]</span> <b>${{it.name}}</b> — In View: <b>${{it.count}} unit(s)</b><br/>
+                                <span style="color:#8B949E; font-size:12px;">Read Text: "${{it.text_read}}"</span>
+                            </div>`;
                         }});
-                        const data = await res.json();
-                        if (!res.ok) throw new Error("busy");
-                        const parsed = JSON.parse(data.candidates[0].content.parts[0].text);
-                        badge.innerText = "● LIVE LOCK (" + model + ")";
-                        badge.style.color = "#3FB950";
-                        let html = `<div style="color:#3FB950; font-weight:700; margin-bottom:6px;">✅ Live Shelf View (${{new Date().toLocaleTimeString()}})</div>`;
-                        if (parsed.items.length === 0) {{
-                            html += `<div style="color:#8B949E;">No product label in frame...</div>`;
-                        }} else {{
-                            parsed.items.forEach(it => {{
-                                html += `<div style="border-left:3px solid #3FB950; padding-left:8px; margin-bottom:6px;">
-                                    <span style="color:#58A6FF; font-family:monospace;">[${{it.sap_id}}]</span> <b>${{it.name}}</b> — In View: <b>${{it.count}}</b><br/>
-                                    <span style="color:#8B949E; font-size:12px;">Read: "${{it.text_read}}"</span>
-                                </div>`;
-                            }});
+                        if (Object.keys(freshCounts).length > 0) {{
+                            currentFrameCounts = freshCounts;
+                            pushStatus.innerText = "";
                         }}
-                        lastValidHtml = html;
-                        resultsEl.innerHTML = html;
-                        inFlight = false;
-                        return;
-                    }} catch (e) {{}}
+                    }}
+                    lastValidHtml = html;
+                    resultsEl.innerHTML = html;
+                }} else {{
+                    badge.innerText = "⏳ CLOUD BUSY (HOLDING)";
+                    badge.style.color = "#D29922";
+                    if (!lastValidHtml) {{
+                        resultsEl.innerHTML = `<div style="color:#D29922; font-size:12px;">⏳ High cloud demand — automatically retrying on next sweep...</div>`;
+                    }}
                 }}
-                badge.innerText = "⏳ CLOUD BUSY (HOLDING)";
-                badge.style.color = "#D29922";
                 inFlight = false;
             }}
             </script>
             """
-            components.html(live_scanner_html, height=455)
 
-        # --- MODE C: AISLE WALK-THROUGH VIDEO (100+ PRODUCTS) ---
-        else:
+            live_event = components.html(live_scanner_html, height=655)
+
+            # Process live push immediately when received from the component bridge
+            if isinstance(live_event, dict) and live_event.get("event_id"):
+                ev_id = live_event["event_id"]
+                if ev_id != st.session_state.processed_live_event_id:
+                    st.session_state.processed_live_event_id = ev_id
+                    counts_map = live_event.get("counts", {})
+                    mode_flag = live_event.get("mode", "set")
+                    raw_items = live_event.get("items", [])
+
+                    matched_updates = []
+                    for item in shared_db["inventory"]:
+                        sap = item["sap_id"]
+                        if sap in counts_map:
+                            qty_val = int(counts_map[sap])
+                            if mode_flag == "add":
+                                item["physical_qty"] += qty_val
+                            else:
+                                item["physical_qty"] = qty_val
+                            matched_updates.append(f"{item['name']} ({sap}) → {item['physical_qty']} unit(s)")
+
+                    if matched_updates:
+                        shared_db["last_updated_ts"] = time.time()
+                        shared_db["activity_log"].insert(0, {
+                            "timestamp": datetime.now().strftime("%H:%M:%S"),
+                            "source": "Live Field Viewfinder",
+                            "model": "gemini-3.5-flash-lite",
+                            "summary": "Live continuous shelf push",
+                            "matched": matched_updates,
+                            "items": [
+                                {
+                                    "sap_id": x.get("sap_id", ""),
+                                    "product_name": x.get("name", ""),
+                                    "unit_count": x.get("count", 1),
+                                    "extracted_text_ar_en": x.get("text_read", ""),
+                                }
+                                for x in raw_items
+                            ],
+                        })
+                        st.session_state.live_sync_feedback = "✅ Live Pushed to Manager Dashboard: " + " | ".join(matched_updates)
+                        st.rerun()
+
+            if st.session_state.live_sync_feedback:
+                st.success(st.session_state.live_sync_feedback)
+
+        # --- MODE B: AISLE WALK-THROUGH VIDEO (100+ PRODUCTS) ---
+        elif audit_mode == "🎞️ Aisle Walk-Through Video (100+ Items)":
             st.info("Record a 10–30 second walk-through video panning across an entire aisle (up to 100+ products). StockSense extracts key frames, deduplicates overlaps, and syncs all SKUs to the Manager Dashboard.")
+            accumulate_vid = st.checkbox("➕ Add to existing verified counts", value=True, key="acc_vid")
             vid_file = st.file_uploader("Upload Aisle Walk-Through Video (.mp4, .mov)", type=["mp4", "mov", "avi"])
             if vid_file is not None:
                 st.video(vid_file)
@@ -668,16 +784,46 @@ with tab1:
                                 st.session_state.last_annotated_img = first_ann
                                 st.session_state.last_barcode_hits = b_hits
                                 matched_list = update_shared_inventory(
-                                    scan_res, b_hits, accumulate=accumulate_mode, source_label="Aisle Video Audit"
+                                    scan_res, b_hits, accumulate=accumulate_vid, source_label="Aisle Video Audit"
                                 )
                                 st.success(f"✅ Video synced! Updated {len(matched_list)} SKU(s) on Manager Dashboard.")
                                 st.rerun()
                         except Exception as e:
                             st.error(f"Video audit error: {e}")
 
+        # --- MODE C: MULTI-SHELF PHOTO BATCH ---
+        else:
+            accumulate_batch = st.checkbox("➕ Add to existing verified counts", value=True, key="acc_batch")
+            uploaded_files = st.file_uploader(
+                "Upload 1 or Multiple Wide Shelf Photos (JPG/PNG)",
+                type=["jpg", "jpeg", "png", "webp"],
+                accept_multiple_files=True,
+            )
+            if uploaded_files:
+                pil_batch = [Image.open(f) for f in uploaded_files]
+                st.image(pil_batch[0], caption=f"Loaded {len(pil_batch)} shelf photo(s)", use_container_width=True)
+                if st.button(f"🔍 Scan {len(pil_batch)} Photo(s) & Sync to SAP", type="primary", use_container_width=True):
+                    with st.spinner("Processing batch & updating shared SAP ledger..."):
+                        try:
+                            first_ann, b_hits, scan_res = analyze_media_frames(
+                                pil_batch,
+                                shared_db["inventory"],
+                                active_gemini_key,
+                                is_video_walkthrough=(len(pil_batch) > 1),
+                            )
+                            st.session_state.last_annotated_img = first_ann
+                            st.session_state.last_barcode_hits = b_hits
+                            matched_list = update_shared_inventory(
+                                scan_res, b_hits, accumulate=accumulate_batch, source_label="Batch Photo Upload"
+                            )
+                            st.success(f"✅ Batch synced ({len(matched_list)} SKU(s) updated on Manager Dashboard)!")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Scan error: {e}")
+
         # --- DISPLAY LATEST AUDIT EVIDENCE ---
         if shared_db["activity_log"]:
-            st.markdown("#### 🧠 Latest Field Scan Result")
+            st.markdown("#### 🧠 Latest Field Scan Feed")
             latest = shared_db["activity_log"][0]
             st.caption(f"{latest['timestamp']} • {latest['source']} (`{latest['model']}`)")
             for det in latest["items"]:
@@ -685,12 +831,12 @@ with tab1:
                 <div class="feed-item">
                     <span class="sap-badge">{det['sap_id']}</span>
                     <strong style="color:#F0F6FC;">{det['product_name']}</strong>
-                    <span style="color:#3FB950; font-weight:700; float:right;">+{det['unit_count']}</span><br/>
+                    <span style="color:#3FB950; font-weight:700; float:right;">{det['unit_count']} unit(s)</span><br/>
                     <span style="color:#8B949E;">Read Text: <em>"{det['extracted_text_ar_en']}"</em></span>
                 </div>
                 """, unsafe_allow_html=True)
 
-    # --- RIGHT COLUMN: MOBILE-CLEAN VERIFIED LEDGER ---
+    # --- RIGHT COLUMN: LIVE STORE VERIFIED COUNTS ---
     with col_list:
         st.subheader("2. Live Store Verified Counts")
         view_filter = st.radio(
@@ -699,7 +845,7 @@ with tab1:
             horizontal=True,
             label_visibility="collapsed",
         )
-        search_q = st.text_input("🔎 Search Product (EN / AR / SAP ID)", placeholder="e.g. Laban, Almarai, حليب...")
+        search_q = st.text_input("🔎 Search Product (EN / AR / SAP ID)", placeholder="e.g. Laban, Almarai, Osra, حليب...")
 
         shown_count = 0
         for idx, item in enumerate(shared_db["inventory"]):
@@ -731,7 +877,7 @@ with tab1:
                     min_value=0,
                     max_value=5000,
                     value=int(item["physical_qty"]),
-                    key=f"qty_{idx}_{int(shared_db['last_updated_ts'])}",
+                    key=f"qty_{idx}_{int(shared_db['last_updated_ts']*100)}",
                 )
                 if new_val != item["physical_qty"]:
                     shared_db["inventory"][idx]["physical_qty"] = new_val
@@ -739,7 +885,7 @@ with tab1:
             st.divider()
 
         if shown_count == 0:
-            st.info("No items verified yet. Snap a product on the left—it will appear here and on the Manager's laptop immediately!")
+            st.info("No items verified yet. Point the live camera at a product and tap the green or blue button—it will appear here and on the Manager's laptop immediately!")
 
         if st.button("✅ Finalize & Post Audit to SAP S/4HANA", type="primary", use_container_width=True):
             shared_db["last_sync"] = datetime.now().strftime("%I:%M %p (Posted to SAP S/4HANA)")
@@ -781,7 +927,7 @@ with tab2:
         k3.metric("Revenue at Risk", f"SAR {rev_risk:,.2f}", "Phantom stock exposure", delta_color="inverse")
         k4.metric("Replenishment Alerts", f"{alerts_count} SKUs", "SAP PO triggers")
 
-        # Live Field Activity Stream (Shows what teammates just scanned on their phones!)
+        # Live Field Activity Stream
         if shared_db["activity_log"]:
             with st.expander(f"📲 Live Field Auditor Feed ({len(shared_db['activity_log'])} scans received)", expanded=True):
                 for log in shared_db["activity_log"][:5]:
