@@ -478,6 +478,248 @@ async function scanSingleNow(forceManual) {
 
 live_scanner_component = get_live_scanner_component()
 
+# --- REGISTER OVERHEAD CCTV LIVE OBS / CAMERA GUARD COMPONENT ---
+@st.cache_resource
+def get_live_cctv_component():
+    comp_dir = os.path.join(tempfile.gettempdir(), "stocksense_live_cctv_guard_v3")
+    os.makedirs(comp_dir, exist_ok=True)
+    index_path = os.path.join(comp_dir, "index.html")
+    html_code = """<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<style>
+  body { margin:0; padding:0; background:transparent; font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  .cam-bar { display:flex; gap:8px; margin-bottom:8px; align-items:center; }
+  select { flex:1; padding:8px 10px; border-radius:8px; border:1px solid #93C5FD; background:#FFFFFF; color:#0B2C5F; font-weight:700; font-size:12.5px; }
+  .btn-refresh { background:#E0EEFF; color:#0B2C5F; border:1px solid #93C5FD; padding:8px 12px; border-radius:8px; font-weight:700; font-size:12px; cursor:pointer; }
+  .wrap { background:#0B2C5F; border-radius:10px; overflow:hidden; position:relative; border:2px solid #0072CE; }
+  video { width:100%; max-height:310px; object-fit:cover; display:block; background:#000; }
+  .top-hud { position:absolute; top:10px; left:10px; right:10px; display:flex; justify-content:space-between; font-family:monospace; font-size:12px; }
+  .rec { background:rgba(220,38,38,0.92); color:#fff; padding:4px 10px; border-radius:6px; font-weight:700; }
+  .clk { background:rgba(15,23,42,0.85); color:#fff; padding:4px 10px; border-radius:6px; }
+  .bot-hud { position:absolute; bottom:10px; left:10px; right:10px; display:flex; justify-content:space-between; align-items:center; }
+  .pose { background:rgba(15,23,42,0.88); color:#34D399; padding:4px 10px; border-radius:6px; font-family:monospace; font-size:11px; }
+  .controls { display:flex; gap:8px; margin-top:10px; }
+  .btn-guard { flex:1; background:linear-gradient(90deg, #DC2626 0%, #B91C1C 100%); color:#fff; border:none; padding:11px; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer; }
+  .btn-check { background:#E0EEFF; color:#0B2C5F; border:1px solid #93C5FD; padding:11px 14px; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer; }
+  .status-box { margin-top:8px; background:#FFFFFF; border:1px solid #CBDCEB; border-radius:8px; padding:10px 12px; font-size:12.5px; color:#1E293B; }
+</style>
+</head>
+<body>
+<div class="cam-bar">
+  <select id="camPicker" onchange="switchSelectedCamera()">
+    <option value="">Detecting available cameras (OBS Virtual Camera / Webcam)...</option>
+  </select>
+  <button class="btn-refresh" onclick="initCameras(true)">🔄 Refresh Cameras</button>
+</div>
+
+<div class="wrap">
+  <video id="cctvVid" autoplay playsinline muted></video>
+  <div class="top-hud">
+    <span id="recBadge" class="rec">● REC • OVERHEAD CCTV</span>
+    <span id="cctvClock" class="clk"></span>
+  </div>
+  <div class="bot-hud">
+    <span id="poseHud" class="pose">POSE KEYPOINTS + CONCEALMENT TRACKER ACTIVE</span>
+  </div>
+</div>
+<canvas id="c1" style="display:none;"></canvas>
+<canvas id="c2" style="display:none;"></canvas>
+
+<div class="controls">
+  <button id="guardBtn" class="btn-guard" onclick="toggleGuard()">🛡️ Start Live AI Theft Guard (Auto-Detect)</button>
+  <button class="btn-check" onclick="runBurstCheck()">⚡ Analyze Burst Now</button>
+</div>
+<div id="guardStatus" class="status-box">
+  Select <b>OBS Virtual Camera</b> in the dropdown above, then click <b>Start Live AI Theft Guard</b>.
+</div>
+
+<script>
+let API_KEY = "";
+let CAM_CODE = "CAM-04";
+let AISLE = "Aisle C2";
+let activeStream = null;
+
+function sendToStreamlit(type, data) {
+  window.parent.postMessage(Object.assign({ isStreamlitMessage: true, type: type }, data), "*");
+}
+
+window.addEventListener("message", function(event) {
+  if (event.data && event.data.type === "streamlit:render") {
+    const args = event.data.args || {};
+    if (args.api_key) API_KEY = args.api_key;
+    if (args.cam_code) CAM_CODE = args.cam_code;
+    if (args.aisle) AISLE = args.aisle;
+    sendToStreamlit("streamlit:setFrameHeight", { height: document.body.scrollHeight + 14 });
+  }
+});
+
+sendToStreamlit("streamlit:componentReady", { apiVersion: 1 });
+sendToStreamlit("streamlit:setFrameHeight", { height: 520 });
+
+const v = document.getElementById('cctvVid');
+const camPicker = document.getElementById('camPicker');
+const c1 = document.getElementById('c1');
+const c2 = document.getElementById('c2');
+const poseHud = document.getElementById('poseHud');
+const guardBtn = document.getElementById('guardBtn');
+const guardStatus = document.getElementById('guardStatus');
+
+let guardActive = false;
+let guardTimer = null;
+let busy = false;
+
+async function startStreamById(deviceId) {
+  if (activeStream) {
+    activeStream.getTracks().forEach(t => t.stop());
+  }
+  const constraints = deviceId
+    ? { video: { deviceId: { exact: deviceId }, width: { ideal: 1280 } }, audio: false }
+    : { video: true, audio: false };
+  activeStream = await navigator.mediaDevices.getUserMedia(constraints);
+  v.srcObject = activeStream;
+}
+
+async function initCameras(forcePrompt) {
+  try {
+    if (!activeStream || forcePrompt) {
+      await startStreamById(null);
+    }
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const videoInputs = devices.filter(d => d.kind === 'videoinput');
+    camPicker.innerHTML = "";
+    let obsDeviceId = "";
+
+    videoInputs.forEach((dev, idx) => {
+      const opt = document.createElement('option');
+      opt.value = dev.deviceId;
+      const label = dev.label || ("Camera " + (idx + 1));
+      opt.text = label;
+      if (label.toLowerCase().includes("obs")) {
+        obsDeviceId = dev.deviceId;
+      }
+      camPicker.appendChild(opt);
+    });
+
+    if (obsDeviceId) {
+      camPicker.value = obsDeviceId;
+      await startStreamById(obsDeviceId);
+      guardStatus.innerHTML = `<span style="color:#047857; font-weight:700;">✅ Connected to OBS Virtual Camera (EZVIZ C6N Live Feed).</span>`;
+    } else if (videoInputs.length > 0) {
+      await startStreamById(videoInputs[0].deviceId);
+    }
+  } catch (err) {
+    guardStatus.innerHTML = `<span style="color:#DC2626; font-weight:700;">⚠ Camera Permission Needed:</span> ${err.message}. Click the lock/camera icon in your browser bar and allow Camera access, then click Refresh Cameras.`;
+  }
+  sendToStreamlit("streamlit:setFrameHeight", { height: document.body.scrollHeight + 14 });
+}
+
+async function switchSelectedCamera() {
+  if (camPicker.value) {
+    await startStreamById(camPicker.value);
+  }
+}
+
+initCameras(false);
+
+setInterval(() => {
+  document.getElementById('cctvClock').innerText = new Date().toLocaleTimeString();
+}, 1000);
+
+function toggleGuard() {
+  guardActive = !guardActive;
+  if (guardActive) {
+    guardBtn.innerText = "⏸ Pause Live AI Theft Guard";
+    guardBtn.style.background = "#0B2C5F";
+    poseHud.innerText = "AI BEHAVIOR GUARD: ACTIVE (5.5s SWEEP)";
+    runBurstCheck();
+    guardTimer = setInterval(runBurstCheck, 5500);
+  } else {
+    guardBtn.innerText = "🛡️ Start Live AI Theft Guard (Auto-Detect)";
+    guardBtn.style.background = "linear-gradient(90deg, #DC2626 0%, #B91C1C 100%)";
+    poseHud.innerText = "POSE KEYPOINTS + CONCEALMENT TRACKER ACTIVE";
+    clearInterval(guardTimer);
+  }
+}
+
+function captureFrame(canvasEl) {
+  canvasEl.width = 512;
+  canvasEl.height = Math.round((v.videoHeight / v.videoWidth) * 512);
+  canvasEl.getContext('2d').drawImage(v, 0, 0, canvasEl.width, canvasEl.height);
+  return canvasEl.toDataURL('image/jpeg', 0.78).split(',')[1];
+}
+
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+async function runBurstCheck() {
+  if (busy || !v.videoWidth || !API_KEY) return;
+  busy = true;
+  poseHud.innerText = "🔍 ANALYZING MOTION SEQUENCE...";
+  poseHud.style.color = "#FBBF24";
+
+  const frame1 = captureFrame(c1);
+  await sleep(900);
+  const frame2 = captureFrame(c2);
+
+  const prompt = `You are StockSense AI Loss-Prevention running on overhead CCTV (${CAM_CODE} - ${AISLE}). Compare these 2 sequential frames (0.9s apart) for shoplifting or suspicious theft behavior: hiding an item in a pocket/backpack/bag/jacket, or rapid shelf sweeping. Normal sitting/standing or holding a phone/item openly without concealment is NOT theft. Return ONLY valid JSON: {"theft_detected": true/false, "behavior_type": "...", "confidence_pct": 85, "description": "...", "recommended_action": "..."}`;
+
+  const models = ["gemini-3.5-flash-lite", "gemini-3.8-flash"];
+  for (const model of models) {
+    try {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-goog-api-key": API_KEY },
+        body: JSON.stringify({
+          contents: [{ parts: [
+            { text: prompt },
+            { inline_data: { mime_type: "image/jpeg", data: frame1 } },
+            { inline_data: { mime_type: "image/jpeg", data: frame2 } }
+          ]}],
+          generationConfig: { responseMimeType: "application/json", temperature: 0.1 }
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) continue;
+      const verdict = JSON.parse(data.candidates[0].content.parts[0].text);
+      const ts = new Date().toLocaleTimeString();
+
+      if (verdict.theft_detected && verdict.confidence_pct >= 70) {
+        poseHud.innerText = "🚨 THEFT GESTURE DETECTED (" + verdict.confidence_pct + "%)";
+        poseHud.style.color = "#F87171";
+        guardStatus.innerHTML = `<div style="color:#B91C1C; font-weight:700;">🚨 [${ts}] ALERT DISPATCHED TO AUTOMATED STORE ALERTS: ${verdict.behavior_type} (${verdict.confidence_pct}%)</div><div style="margin-top:4px;">${verdict.description}</div>`;
+        sendToStreamlit("streamlit:setComponentValue", {
+          value: {
+            alert_id: Date.now() + "_" + Math.random().toString(36).slice(2, 6),
+            timestamp: new Date().toLocaleString(),
+            camera_id: CAM_CODE,
+            aisle: AISLE,
+            behavior_type: verdict.behavior_type,
+            confidence_pct: verdict.confidence_pct,
+            description: verdict.description,
+            recommended_action: verdict.recommended_action || "Dispatch floor security supervisor to aisle exit immediately."
+          }
+        });
+      } else {
+        poseHud.innerText = "● CLEAR • NORMAL ACTIVITY (" + ts + ")";
+        poseHud.style.color = "#34D399";
+        guardStatus.innerHTML = `<span style="color:#047857; font-weight:700;">✅ [${ts}] Normal Activity (${verdict.confidence_pct}%):</span> ${verdict.description}`;
+      }
+      sendToStreamlit("streamlit:setFrameHeight", { height: document.body.scrollHeight + 14 });
+      break;
+    } catch (e) {}
+  }
+  busy = false;
+}
+</script>
+</body>
+</html>"""
+    with open(index_path, "w", encoding="utf-8") as f:
+        f.write(html_code)
+    return components.declare_component("stocksense_live_cctv_guard_v3", path=comp_dir)
+
+cctv_guard_component = get_live_cctv_component()
+
 # --- 42-SKU SAUDI SUPERMARKET SAP MATERIAL MASTER CATALOG ---
 DEFAULT_INVENTORY = [
     {"sku_key": "osra_sugar", "sap_id": "SAP-10045210", "ean13": "6281007041012", "category": "Pantry", "name": "Osra White Sugar 1kg", "arabic_name": "سكر الأسرة الأبيض 1 كجم", "keywords": ["osra", "al osra", "sugar", "أسرة", "الأسرة", "سكر", "قيراط"], "aisle": "Aisle B2", "price": 5.50, "erp_qty": 12, "physical_qty": 0, "reorder_pt": 6},
@@ -650,6 +892,8 @@ if "processed_live_event_id" not in st.session_state:
     st.session_state.processed_live_event_id = None
 if "live_sync_feedback" not in st.session_state:
     st.session_state.live_sync_feedback = ""
+if "last_cctv_alert_id" not in st.session_state:
+    st.session_state.last_cctv_alert_id = None
 
 # --- SIDEBAR SETTINGS ---
 with st.sidebar:
@@ -673,6 +917,7 @@ with st.sidebar:
         st.session_state.last_annotated_img = None
         st.session_state.last_barcode_hits = []
         st.session_state.live_sync_feedback = ""
+        st.session_state.last_cctv_alert_id = None
         st.rerun()
 
 # --- BARCODE & MULTI-MODEL RESILIENT VISION ENGINE ---
@@ -1325,7 +1570,6 @@ with tab_workforce:
         st.subheader("👥 Workforce Productivity & Mobile Auditor Access Control")
         st.caption("Tracks how many physical units and unique SKUs each authorized field auditor has verified in real time.")
 
-        # Field Auditors Only (Exclude Manager Admin) & Preserve Sequential Auditor 1, 2, 3... Order
         rows = []
         auditor_items = [
             (uname, udata)
@@ -1487,10 +1731,10 @@ if tab_alerts is not None:
                         <div style="color:#047857; font-weight:800; font-size:0.84rem;">💬 WHATSAPP BUSINESS ALERT • STORE #104 • {row['category'].upper()}</div>
                         <div style="color:#1E293B; margin-top:6px; font-size:0.93rem; line-height:1.5;">
                             <strong style="color:#0B2C5F;">⚠️ SHELF REPLENISHMENT REQUIRED ({row['sap_id']}):</strong><br/>
-                            • <strong>Product:</strong> {row['name']} ({row['arabic_name']})<br/>
-                            • <strong>Barcode / Location:</strong> {row['ean13']} • {row['aisle']}<br/>
-                            • <strong>Verified Shelf Qty:</strong> {row['physical_qty']} units (SAP Book: {row['erp_qty']} | Variance: {row['variance']:+d} | Risk: SAR {row['rev_at_risk']:,.2f})<br/>
-                            • <strong>Action:</strong> Pull 1 case from Backroom Bay B or approve draft SAP Purchase Order.
+- <strong>Product:</strong> {row['name']} ({row['arabic_name']})<br/>
+- <strong>Barcode / Location:</strong> {row['ean13']} • {row['aisle']}<br/>
+- <strong>Verified Shelf Qty:</strong> {row['physical_qty']} units (SAP Book: {row['erp_qty']} | Variance: {row['variance']:+d} | Risk: SAR {row['rev_at_risk']:,.2f})<br/>
+- <strong>Action:</strong> Pull 1 case from Backroom Bay B or approve draft SAP Purchase Order.
                         </div>
                     </div>
                     """, unsafe_allow_html=True)
@@ -1523,36 +1767,35 @@ if tab_cctv is not None:
             cctv_source = st.radio(
                 "Overhead Camera Input Source:",
                 [
-                    "📹 Live Overhead Webcam / USB CCTV Feed",
+                    "📹 Live Overhead Webcam / OBS Virtual CCTV Feed",
                     "🎞️ Upload Overhead CCTV Footage (.mp4 / .mov)",
                 ],
                 horizontal=True,
             )
 
-            if cctv_source == "📹 Live Overhead Webcam / USB CCTV Feed":
-                st.caption("Connect an overhead/laptop webcam to simulate a fixed ceiling aisle camera monitoring shopper posture and shelf interaction.")
-                cctv_live_html = """
-                <div style="background:#0B2C5F; border-radius:10px; overflow:hidden; position:relative; border:2px solid #0072CE;">
-                    <video id="cctvVid" autoplay playsinline muted style="width:100%; max-height:310px; object-fit:cover; display:block;"></video>
-                    <div style="position:absolute; top:10px; left:10px; right:10px; display:flex; justify-content:space-between; font-family:monospace; font-size:12px;">
-                        <span style="background:rgba(220,38,38,0.92); color:#fff; padding:4px 10px; border-radius:6px; font-weight:700;">● REC • OVERHEAD CCTV</span>
-                        <span id="cctvClock" style="background:rgba(15,23,42,0.85); color:#fff; padding:4px 10px; border-radius:6px;"></span>
-                    </div>
-                    <div style="position:absolute; bottom:10px; left:10px; background:rgba(15,23,42,0.85); color:#34D399; padding:4px 10px; border-radius:6px; font-family:monospace; font-size:11px;">
-                        POSE KEYPOINTS + CONCEALMENT TRACKER ACTIVE
-                    </div>
-                </div>
-                <script>
-                    const v = document.getElementById('cctvVid');
-                    navigator.mediaDevices.getUserMedia({ video: true, audio: false })
-                        .then(s => { v.srcObject = s; })
-                        .catch(e => { console.log(e); });
-                    setInterval(() => {
-                        document.getElementById('cctvClock').innerText = new Date().toLocaleTimeString();
-                    }, 1000);
-                </script>
-                """
-                components.html(cctv_live_html, height=325)
+            if cctv_source == "📹 Live Overhead Webcam / OBS Virtual CCTV Feed":
+                st.caption("Select **OBS Virtual Camera** (streaming your EZVIZ C6N) or your laptop webcam in the dropdown below, then toggle **Start Live AI Theft Guard**.")
+                cctv_event = cctv_guard_component(
+                    api_key=active_gemini_key,
+                    cam_code=cam_code,
+                    aisle=aisle_label,
+                    key="live_ezviz_cctv_guard_v3",
+                )
+
+                if isinstance(cctv_event, dict) and cctv_event.get("alert_id"):
+                    al_id = cctv_event["alert_id"]
+                    if st.session_state.last_cctv_alert_id != al_id:
+                        st.session_state.last_cctv_alert_id = al_id
+                        shared_db["theft_alerts"].insert(0, {
+                            "timestamp": cctv_event.get("timestamp", datetime.now().strftime("%Y-%m-%d %I:%M:%S %p")),
+                            "camera_id": cctv_event.get("camera_id", cam_code),
+                            "aisle": cctv_event.get("aisle", aisle_label),
+                            "behavior_type": cctv_event.get("behavior_type", "Suspicious Concealment"),
+                            "confidence_pct": cctv_event.get("confidence_pct", 88),
+                            "description": cctv_event.get("description", "Overhead AI detected suspicious item concealment."),
+                            "recommended_action": cctv_event.get("recommended_action", "Dispatch floor security supervisor."),
+                        })
+                        st.rerun()
 
                 st.markdown("##### ⚡ Demo Trigger: Simulate Overhead CCTV Theft Event")
                 sim_behavior = st.selectbox(
@@ -1615,11 +1858,11 @@ if tab_cctv is not None:
             st.markdown("""
             Unlike inventory scanning (done via handheld phones), **Theft Behavioral Detection** runs continuously on **fixed overhead store CCTV cameras** without using facial recognition:
 
-            1. **Skeleton Pose Estimation (YOLOv8-Pose):** Tracks wrist, elbow, and torso keypoints in real time across overhead video frames.
-            2. **Action & Concealment Recognition (SlowFast / VideoMAE + Vision AI):** Analyzes 3–5 second motion sequences to detect:
-               * **Concealment:** Hand picks item from shelf and moves directly into a pocket, backpack, or under clothing.
-               * **Shelf Sweeping:** Rapidly clearing multiple high-value items into a personal bag.
-            3. **Instant Alert Routing:** Whenever suspicious behavior is detected, StockSense timestamps the exact camera channel and aisle and pushes a **Priority Security Alert** to the Store Manager's alert feed.
+1. **Skeleton Pose Estimation (YOLOv8-Pose):** Tracks wrist, elbow, and torso keypoints in real time across overhead video frames.
+2. **Action & Concealment Recognition (SlowFast / VideoMAE + Vision AI):** Analyzes 3–5 second motion sequences to detect:
+  - **Concealment:** Hand picks item from shelf and moves directly into a pocket, backpack, or under clothing.
+  - **Shelf Sweeping:** Rapidly clearing multiple high-value items into a personal bag.
+3. **Instant Alert Routing:** Whenever suspicious behavior is detected, StockSense timestamps the exact camera channel and aisle and pushes a **Priority Security Alert** to the Store Manager's alert feed.
             """)
             st.markdown("---")
             st.markdown("#### 📡 Overhead CCTV Edge Telemetry")
