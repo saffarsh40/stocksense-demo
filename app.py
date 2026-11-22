@@ -226,7 +226,7 @@ st.markdown("""
 # --- REGISTER TWO-WAY LIVE SHELF SCANNER COMPONENT ---
 @st.cache_resource
 def get_live_scanner_component():
-    comp_dir = os.path.join(tempfile.gettempdir(), "stocksense_live_scanner_brand_v6")
+    comp_dir = os.path.join(tempfile.gettempdir(), "stocksense_live_scanner_brand_v7")
     os.makedirs(comp_dir, exist_ok=True)
     index_path = os.path.join(comp_dir, "index.html")
     html_code = """<!DOCTYPE html>
@@ -474,7 +474,7 @@ async function scanSingleNow(forceManual) {
 </html>"""
     with open(index_path, "w", encoding="utf-8") as f:
         f.write(html_code)
-    return components.declare_component("stocksense_live_scanner_brand_v6", path=comp_dir)
+    return components.declare_component("stocksense_live_scanner_brand_v7", path=comp_dir)
 
 live_scanner_component = get_live_scanner_component()
 
@@ -961,7 +961,6 @@ if active_role == "Manager":
         "🛡️ Overhead CCTV Theft Detection",
     ])
 else:
-    # Field Auditors get focused mobile scanning + live leaderboard check without admin controls
     tab_scanner, tab_workforce = st.tabs([
         "🎥 Live Field Auditor Scanner",
         "👥 My Efficiency & Team Leaderboard",
@@ -1005,7 +1004,7 @@ with tab_scanner:
             live_event = live_scanner_component(
                 api_key=active_gemini_key,
                 catalog=catalog_payload,
-                key="live_field_cam_brand_v6",
+                key="live_field_cam_brand_v7",
             )
 
             if isinstance(live_event, dict) and live_event.get("event_id"):
@@ -1318,23 +1317,29 @@ if tab_dashboard is not None:
         render_live_manager_dashboard()
 
 # ==========================================
-# NEW TAB: WORKFORCE & AUDITOR EFFICIENCY + ACCESS MANAGEMENT
+# TAB 3: WORKFORCE & AUDITOR EFFICIENCY + ACCESS MANAGEMENT
 # ==========================================
 with tab_workforce:
     @st.fragment(run_every=4)
     def render_workforce_efficiency():
         st.subheader("👥 Workforce Productivity & Mobile Auditor Access Control")
-        st.caption("Tracks how many physical units and unique SKUs each authorized user has verified in real time.")
+        st.caption("Tracks how many physical units and unique SKUs each authorized field auditor has verified in real time.")
 
-        # Build Auditor Efficiency Dataframe
+        # Field Auditors Only (Exclude Manager Admin) & Preserve Sequential Auditor 1, 2, 3... Order
         rows = []
-        total_team_units = sum(u["units_verified"] for u in shared_db["users"].values())
+        auditor_items = [
+            (uname, udata)
+            for uname, udata in shared_db["users"].items()
+            if udata.get("role") == "Field Auditor"
+        ]
+        total_team_units = sum(u["units_verified"] for _, u in auditor_items)
 
-        for uname, udata in shared_db["users"].items():
+        for order_idx, (uname, udata) in enumerate(auditor_items):
             skus_count = len(udata["skus_touched"])
             units_count = udata["units_verified"]
             share_pct = round((units_count / total_team_units) * 100, 1) if total_team_units > 0 else 0.0
             rows.append({
+                "_order": order_idx,
                 "User Account": uname,
                 "Role": udata["role"],
                 "Assigned Zone": udata["assigned_zone"],
@@ -1346,15 +1351,19 @@ with tab_workforce:
                 "Last Active": udata["last_active"],
             })
 
-        eff_df = pd.DataFrame(rows).sort_values(by="Units Verified", ascending=False)
+        eff_df = pd.DataFrame(rows).sort_values(by="_order", ascending=True).drop(columns=["_order"])
 
-        # Top Workforce KPIs
-        top_performer = eff_df.iloc[0]["User Account"] if not eff_df.empty and eff_df.iloc[0]["Units Verified"] > 0 else "Awaiting Scans"
-        active_auditors_cnt = len([u for u in shared_db["users"].values() if u["active"] and u["role"] == "Field Auditor"])
+        top_row = eff_df.sort_values(by="Units Verified", ascending=False).iloc[0] if not eff_df.empty else None
+        top_performer = (
+            top_row["User Account"]
+            if top_row is not None and top_row["Units Verified"] > 0
+            else "Awaiting Scans"
+        )
+        active_auditors_cnt = len([u for _, u in auditor_items if u["active"]])
 
         w1, w2, w3 = st.columns(3)
         w1.metric("Authorized Field Auditors", f"{active_auditors_cnt} Active", "Mobile scanner enabled")
-        w2.metric("Total Team Units Verified", f"{total_team_units} Units", "Across all active sessions")
+        w2.metric("Total Team Units Verified", f"{total_team_units} Units", "Across all field auditors")
         w3.metric("Top Auditor (By Volume)", top_performer, "Highest verified count")
 
         st.write("")
@@ -1364,7 +1373,7 @@ with tab_workforce:
         with col_eff_chart:
             st.markdown('<div class="chart-card">', unsafe_allow_html=True)
             st.markdown("#### 📈 Verified Units by Auditor (Efficiency Comparison)")
-            st.caption("Live comparison of physical shelf items verified per user.")
+            st.caption("Live comparison of physical shelf items verified per field auditor.")
             chart_eff = eff_df.set_index("User Account")[["Units Verified", "Unique SKUs Audited"]]
             st.bar_chart(chart_eff, color=["#00A86B", "#0072CE"], horizontal=True, height=280)
             st.markdown('</div>', unsafe_allow_html=True)
@@ -1378,9 +1387,10 @@ with tab_workforce:
                 st.markdown("#### 🔑 Grant Mobile Access to New Auditor")
                 st.caption("Provision a new mobile user account and PIN so they can log in from their smartphone.")
 
-                new_name = st.text_input("Auditor Name / Label:", placeholder="e.g. Mohammed (Auditor 4)")
+                next_num = len(auditor_items) + 1
+                new_name = st.text_input("Auditor Name / Label:", placeholder=f"e.g. Mohammed (Auditor {next_num})")
                 new_zone = st.text_input("Assigned Store Aisle / Zone:", placeholder="e.g. Aisle D (Beverages)")
-                new_pin = st.text_input("Assign 4-Digit PIN:", value="4444", max_chars=8)
+                new_pin = st.text_input("Assign 4-Digit PIN:", value=f"{next_num}{next_num}{next_num}{next_num}"[:4], max_chars=8)
 
                 if st.button("➕ Grant Mobile Scanner Access", type="primary", use_container_width=True):
                     clean_name = new_name.strip()
@@ -1404,7 +1414,7 @@ with tab_workforce:
 
                 st.markdown("---")
                 st.markdown("#### 🛡️ Manage Existing User Permissions")
-                manageable_users = [u for u in shared_db["users"].keys() if u != "Manager (Admin)"]
+                manageable_users = [u for u, meta in shared_db["users"].items() if meta.get("role") == "Field Auditor"]
                 target_u = st.selectbox("Select Auditor Account:", manageable_users, key="manage_u_sel")
                 is_currently_active = shared_db["users"][target_u]["active"]
 
@@ -1426,7 +1436,7 @@ with tab_workforce:
     render_workforce_efficiency()
 
 # ==========================================
-# TAB 3: AUTOMATED STORE ALERTS
+# TAB 4: AUTOMATED STORE ALERTS
 # ==========================================
 if tab_alerts is not None:
     with tab_alerts:
@@ -1488,7 +1498,7 @@ if tab_alerts is not None:
         render_automated_alerts()
 
 # ==========================================
-# TAB 4: OVERHEAD CCTV THEFT BEHAVIORAL DETECTION
+# TAB 5: OVERHEAD CCTV THEFT BEHAVIORAL DETECTION
 # ==========================================
 if tab_cctv is not None:
     with tab_cctv:
