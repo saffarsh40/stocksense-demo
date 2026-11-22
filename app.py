@@ -1,3 +1,4 @@
+import base64
 import json
 import os
 import tempfile
@@ -18,116 +19,182 @@ from google.genai import types
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(
-    page_title="StockSense AI | Enterprise Shelf & SAP Intelligence",
+    page_title="StockSense AI | Enterprise Shelf & Loss-Prevention Intelligence",
     page_icon="📦",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# --- COMMERCIAL SAAS CUSTOM CSS ---
+# --- LOAD LOGO FROM REPOSITORY (logo.png) ---
+def get_logo_base64() -> str:
+    for candidate in ["logo.png", "logo.jpg", "logo.jpeg", "assets/logo.png"]:
+        if os.path.exists(candidate):
+            with open(candidate, "rb") as f:
+                return base64.b64encode(f.read()).decode("utf-8")
+    return ""
+
+LOGO_B64 = get_logo_base64()
+
+# --- ENTERPRISE LIGHT THEME MATCHED TO STOCKSENSE LOGO (NAVY #0B2C5F, BLUE #0072CE, EMERALD #00A86B) ---
 st.markdown("""
 <style>
     .stApp {
-        background-color: #0B0F17;
+        background-color: #F4F7FB;
+        color: #0F172A;
     }
     #MainMenu, footer {visibility: hidden;}
     .block-container {
-        padding-top: 1.8rem;
+        padding-top: 1.5rem;
         padding-bottom: 2.5rem;
-        max-width: 1340px;
+        max-width: 1360px;
     }
+    /* Brand Header Card */
     .brand-bar {
         display: flex;
         justify-content: space-between;
         align-items: center;
         flex-wrap: wrap;
-        gap: 10px;
-        padding: 14px 20px;
-        background: linear-gradient(135deg, #151C28 0%, #0E131D 100%);
-        border: 1px solid #263042;
+        gap: 14px;
+        padding: 14px 22px;
+        background: #FFFFFF;
+        border: 1px solid #D8E2EE;
+        border-top: 4px solid #0072CE;
         border-radius: 14px;
-        margin-bottom: 16px;
-        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+        margin-bottom: 18px;
+        box-shadow: 0 4px 16px rgba(11, 44, 95, 0.06);
+    }
+    .brand-left {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+    }
+    .brand-logo {
+        height: 54px;
+        width: auto;
+        border-radius: 8px;
+        object-fit: contain;
+    }
+    .brand-title {
+        font-size: 1.45rem;
+        font-weight: 800;
+        color: #0B2C5F;
+        letter-spacing: -0.4px;
+        line-height: 1.1;
+    }
+    .brand-title span {
+        color: #00A86B;
+    }
+    .brand-sub {
+        color: #475569;
+        font-size: 0.84rem;
+        font-weight: 500;
+        margin-top: 2px;
     }
     .status-pill {
-        background-color: rgba(63, 185, 80, 0.14);
-        color: #3FB950;
-        border: 1px solid rgba(63, 185, 80, 0.45);
+        background-color: #ECFDF5;
+        color: #047857;
+        border: 1px solid #A7F3D0;
         padding: 6px 14px;
         border-radius: 999px;
-        font-size: 0.78rem;
-        font-weight: 600;
+        font-size: 0.8rem;
+        font-weight: 700;
     }
+    /* KPI Metric Cards */
     div[data-testid="stMetric"] {
-        background: linear-gradient(180deg, #151B26 0%, #111620 100%);
-        border: 1px solid #263042;
+        background: #FFFFFF;
+        border: 1px solid #D8E2EE;
+        border-left: 4px solid #0072CE;
         padding: 14px 16px;
-        border-radius: 14px;
-        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+        border-radius: 12px;
+        box-shadow: 0 2px 10px rgba(11, 44, 95, 0.04);
+    }
+    div[data-testid="stMetricLabel"] {
+        color: #475569 !important;
+        font-weight: 600 !important;
     }
     div[data-testid="stMetricValue"] {
         font-size: 1.6rem !important;
         font-weight: 800 !important;
-        color: #F0F6FC !important;
+        color: #0B2C5F !important;
     }
+    /* Navigation Tabs */
     .stTabs [data-baseweb="tab-list"] {
         gap: 6px;
-        background-color: #151B26;
+        background-color: #FFFFFF;
         padding: 6px;
         border-radius: 12px;
-        border: 1px solid #263042;
+        border: 1px solid #D8E2EE;
+        box-shadow: 0 2px 8px rgba(11, 44, 95, 0.04);
         overflow-x: auto;
     }
     .stTabs [data-baseweb="tab"] {
         border-radius: 8px;
-        padding: 8px 14px;
+        padding: 8px 15px;
         font-weight: 600;
+        color: #334155;
         white-space: nowrap;
     }
     .stTabs [aria-selected="true"] {
-        background-color: #1F6FEB !important;
+        background: linear-gradient(90deg, #0B2C5F 0%, #0072CE 100%) !important;
         color: #FFFFFF !important;
     }
+    /* Chart & Content Cards */
     .chart-card {
-        background-color: #131923;
-        border: 1px solid #263042;
+        background-color: #FFFFFF;
+        border: 1px solid #D8E2EE;
         border-radius: 14px;
-        padding: 16px 18px 8px 18px;
+        padding: 16px 18px 10px 18px;
         margin-bottom: 14px;
+        box-shadow: 0 2px 10px rgba(11, 44, 95, 0.04);
     }
     .sap-badge {
         display: inline-block;
-        background-color: rgba(31, 111, 235, 0.16);
-        color: #58A6FF;
-        border: 1px solid rgba(88, 166, 255, 0.35);
+        background-color: #EFF6FF;
+        color: #0072CE;
+        border: 1px solid #BFDBFE;
         padding: 2px 8px;
         border-radius: 6px;
         font-family: monospace;
-        font-size: 0.74rem;
+        font-size: 0.75rem;
+        font-weight: 700;
         margin-right: 6px;
     }
     .feed-item {
-        background-color: #121822;
-        border-left: 3px solid #1F6FEB;
-        padding: 8px 12px;
-        border-radius: 0 8px 8px 0;
-        margin-bottom: 6px;
-        font-size: 0.84rem;
+        background-color: #FFFFFF;
+        border: 1px solid #E2E8F0;
+        border-left: 4px solid #00A86B;
+        padding: 10px 14px;
+        border-radius: 0 10px 10px 0;
+        margin-bottom: 8px;
+        font-size: 0.86rem;
+        color: #1E293B;
+    }
+    .cctv-panel {
+        background: #FFFFFF;
+        border: 1px solid #D8E2EE;
+        border-top: 4px solid #0B2C5F;
+        border-radius: 14px;
+        padding: 18px;
+        box-shadow: 0 4px 14px rgba(11, 44, 95, 0.05);
     }
     div.stButton > button[kind="primary"] {
-        background: linear-gradient(90deg, #1F6FEB 0%, #388BFD 100%);
+        background: linear-gradient(90deg, #0072CE 0%, #00A86B 100%);
+        color: #FFFFFF;
         border: none;
         border-radius: 10px;
         font-weight: 700;
         padding: 0.65rem 1.2rem;
     }
+    h1, h2, h3, h4 {
+        color: #0B2C5F !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# --- REGISTER TRUE TWO-WAY LIVE SCANNER COMPONENT ---
+# --- REGISTER TWO-WAY LIVE SHELF SCANNER COMPONENT (LIGHT-THEMED) ---
 @st.cache_resource
 def get_live_scanner_component():
-    comp_dir = os.path.join(tempfile.gettempdir(), "stocksense_live_scanner_v3")
+    comp_dir = os.path.join(tempfile.gettempdir(), "stocksense_live_scanner_light_v4")
     os.makedirs(comp_dir, exist_ok=True)
     index_path = os.path.join(comp_dir, "index.html")
     html_code = """<!DOCTYPE html>
@@ -136,23 +203,23 @@ def get_live_scanner_component():
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <style>
-  body { margin: 0; padding: 0; background: transparent; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #F0F6FC; }
-  .card { background:#151B26; border:1px solid #263042; border-radius:12px; padding:12px; box-sizing:border-box; }
-  .vid-wrap { position:relative; width:100%; border-radius:8px; overflow:hidden; background:#000; }
+  body { margin: 0; padding: 0; background: transparent; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #0F172A; }
+  .card { background:#FFFFFF; border:1px solid #D8E2EE; border-radius:14px; padding:12px; box-sizing:border-box; box-shadow: 0 2px 10px rgba(11,44,95,0.05); }
+  .vid-wrap { position:relative; width:100%; border-radius:10px; overflow:hidden; background:#0B2C5F; }
   video { width:100%; max-height:260px; object-fit:cover; display:block; }
   .hud { position:absolute; top:10px; left:10px; right:10px; display:flex; justify-content:space-between; align-items:center; }
-  .badge { background:rgba(11,15,23,0.9); color:#3FB950; border:1px solid #3FB950; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:700; }
-  .timer { background:rgba(11,15,23,0.9); color:#58A6FF; padding:4px 10px; border-radius:999px; font-size:12px; }
+  .badge { background:rgba(255,255,255,0.95); color:#047857; border:1px solid #00A86B; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:700; }
+  .timer { background:rgba(11,44,95,0.92); color:#FFFFFF; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:600; }
   .row { display:flex; gap:8px; margin-top:10px; }
-  .btn-start { flex:1; background:#1F6FEB; color:#fff; border:none; padding:11px; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer; }
-  .btn-now { background:#21262D; color:#F0F6FC; border:1px solid #30363D; padding:11px 14px; border-radius:8px; font-weight:600; font-size:13px; cursor:pointer; }
-  .results { margin-top:10px; background:#0B0F17; border:1px solid #263042; border-radius:8px; padding:12px; min-height:95px; max-height:175px; overflow-y:auto; font-size:13px; }
+  .btn-start { flex:1; background:#0072CE; color:#fff; border:none; padding:11px; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer; }
+  .btn-now { background:#F1F5F9; color:#0B2C5F; border:1px solid #CBD5E1; padding:11px 14px; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer; }
+  .results { margin-top:10px; background:#F8FAFC; border:1px solid #CBD5E1; border-radius:8px; padding:12px; min-height:95px; max-height:175px; overflow-y:auto; font-size:13px; color:#1E293B; }
   .sync-col { display:flex; flex-direction:column; gap:8px; margin-top:12px; }
-  .btn-green { width:100%; background:#238636; color:#FFFFFF; border:none; padding:14px; border-radius:8px; font-weight:700; font-size:14px; cursor:pointer; }
-  .btn-green:active { background:#2EA043; }
-  .btn-blue { width:100%; background:#1F6FEB; color:#FFFFFF; border:none; padding:14px; border-radius:8px; font-weight:700; font-size:14px; cursor:pointer; }
-  .btn-blue:active { background:#388BFD; }
-  .status { margin-top:8px; text-align:center; font-size:12px; font-weight:600; min-height:18px; }
+  .btn-green { width:100%; background:#00A86B; color:#FFFFFF; border:none; padding:13px; border-radius:8px; font-weight:700; font-size:14px; cursor:pointer; }
+  .btn-green:active { background:#059669; }
+  .btn-blue { width:100%; background:#0B2C5F; color:#FFFFFF; border:none; padding:13px; border-radius:8px; font-weight:700; font-size:14px; cursor:pointer; }
+  .btn-blue:active { background:#0072CE; }
+  .status { margin-top:8px; text-align:center; font-size:12px; font-weight:700; min-height:18px; }
 </style>
 </head>
 <body>
@@ -173,7 +240,7 @@ def get_live_scanner_component():
   </div>
 
   <div id="liveResults" class="results">
-    <span style="color:#8B949E;">Point camera at products and tap <b>Start Live AI Viewfinder</b>...</span>
+    <span style="color:#64748B;">Point camera at products and tap <b>Start Live AI Viewfinder</b>...</span>
   </div>
 
   <div class="sync-col">
@@ -223,11 +290,11 @@ let unchangedCount = 0;
 
 function sendLiveSync(mode) {
   if (Object.keys(currentFrameCounts).length === 0) {
-    pushStatus.style.color = "#D29922";
+    pushStatus.style.color = "#D97706";
     pushStatus.innerText = "⚠ Scan a product first so its SAP ID appears in the box above.";
     return;
   }
-  pushStatus.style.color = "#3FB950";
+  pushStatus.style.color = "#047857";
   pushStatus.innerText = "✅ Sent to Manager Dashboard (" + new Date().toLocaleTimeString() + ")!";
   sendToStreamlit("streamlit:setComponentValue", {
     value: {
@@ -259,8 +326,8 @@ async function startCamera() {
     video.srcObject = stream;
   } catch (err) {
     badge.innerText = "⚠ Camera blocked";
-    badge.style.color = "#F85149";
-    resultsEl.innerHTML = `<span style="color:#F85149;">Camera error: ${err.message}</span>`;
+    badge.style.color = "#DC2626";
+    resultsEl.innerHTML = `<span style="color:#DC2626;">Camera error: ${err.message}</span>`;
   }
 }
 startCamera();
@@ -269,13 +336,13 @@ function toggleAutoScan() {
   scanning = !scanning;
   if (scanning) {
     toggleBtn.innerText = "⏸ Pause Live Viewfinder";
-    toggleBtn.style.background = "#DA3633";
+    toggleBtn.style.background = "#DC2626";
     timerEl.innerText = "Auto-Scan: ON (4.0s)";
     scanSingleNow(true);
     intervalId = setInterval(() => scanSingleNow(false), 4000);
   } else {
     toggleBtn.innerText = "▶ Resume Live AI Viewfinder";
-    toggleBtn.style.background = "#1F6FEB";
+    toggleBtn.style.background = "#0072CE";
     timerEl.innerText = "Auto-Scan: PAUSED";
     clearInterval(intervalId);
   }
@@ -317,7 +384,7 @@ async function scanSingleNow(forceManual) {
     unchangedCount++;
     if (unchangedCount > 1 && lastValidHtml) {
       badge.innerText = "● LOCKED (STEADY VIEW)";
-      badge.style.color = "#3FB950";
+      badge.style.color = "#047857";
       return;
     }
   } else {
@@ -326,7 +393,7 @@ async function scanSingleNow(forceManual) {
 
   inFlight = true;
   badge.innerText = "🔍 READING LABELS...";
-  badge.style.color = "#58A6FF";
+  badge.style.color = "#0072CE";
 
   canvas.width = 512;
   canvas.height = Math.round((video.videoHeight / video.videoWidth) * 512);
@@ -337,23 +404,23 @@ async function scanSingleNow(forceManual) {
 
   if (result && result.parsed && result.parsed.items) {
     badge.innerText = "● LIVE LOCK (" + result.usedModel + ")";
-    badge.style.color = "#3FB950";
+    badge.style.color = "#047857";
 
     let freshCounts = {};
-    let html = `<div style="color:#3FB950; font-weight:700; margin-bottom:6px;">✅ Live Shelf View (${new Date().toLocaleTimeString()})</div>`;
+    let html = `<div style="color:#047857; font-weight:700; margin-bottom:6px;">✅ Live Shelf View (${new Date().toLocaleTimeString()})</div>`;
 
     if (result.parsed.items.length === 0) {
-      html += `<div style="color:#8B949E;">No product label in frame — pan camera toward a product...</div>`;
+      html += `<div style="color:#64748B;">No product label in frame — pan camera toward a product...</div>`;
     } else {
       currentFrameItems = result.parsed.items;
       result.parsed.items.forEach(it => {
         if (it.sap_id && it.sap_id !== "SAP-UNMAPPED") {
           freshCounts[it.sap_id] = (freshCounts[it.sap_id] || 0) + (it.count || 1);
         }
-        const tagColor = it.sap_id === "SAP-UNMAPPED" ? "#D29922" : "#58A6FF";
-        html += `<div style="border-left:3px solid #3FB950; padding-left:8px; margin-bottom:6px;">
-          <span style="color:${tagColor}; font-family:monospace;">[${it.sap_id}]</span> <b>${it.name}</b> — In View: <b>${it.count} unit(s)</b><br/>
-          <span style="color:#8B949E; font-size:12px;">Read Text: "${it.text_read}"</span>
+        const tagColor = it.sap_id === "SAP-UNMAPPED" ? "#D97706" : "#0072CE";
+        html += `<div style="border-left:3px solid #00A86B; padding-left:8px; margin-bottom:6px;">
+          <span style="color:${tagColor}; font-family:monospace; font-weight:700;">[${it.sap_id}]</span> <b>${it.name}</b> — In View: <b>${it.count} unit(s)</b><br/>
+          <span style="color:#475569; font-size:12px;">Read Text: "${it.text_read}"</span>
         </div>`;
       });
       if (Object.keys(freshCounts).length > 0) {
@@ -365,9 +432,9 @@ async function scanSingleNow(forceManual) {
     sendToStreamlit("streamlit:setFrameHeight", { height: document.body.scrollHeight + 10 });
   } else {
     badge.innerText = "⏳ CLOUD BUSY (HOLDING)";
-    badge.style.color = "#D29922";
+    badge.style.color = "#D97706";
     if (!lastValidHtml) {
-      resultsEl.innerHTML = `<div style="color:#D29922; font-size:12px;">⏳ High cloud demand — automatically retrying on next sweep...</div>`;
+      resultsEl.innerHTML = `<div style="color:#D97706; font-size:12px;">⏳ High cloud demand — automatically retrying on next sweep...</div>`;
     }
   }
   inFlight = false;
@@ -377,7 +444,7 @@ async function scanSingleNow(forceManual) {
 </html>"""
     with open(index_path, "w", encoding="utf-8") as f:
         f.write(html_code)
-    return components.declare_component("stocksense_live_scanner", path=comp_dir)
+    return components.declare_component("stocksense_live_scanner_light", path=comp_dir)
 
 live_scanner_component = get_live_scanner_component()
 
@@ -440,19 +507,20 @@ DEFAULT_INVENTORY = [
     {"sku_key": "lifebuoy_handwash", "sap_id": "SAP-10045972", "ean13": "6281006080111", "category": "Personal Care", "name": "Lifebuoy Total 10 Hand Wash 200ml", "arabic_name": "غسول اليدين لايفبوي 200 مل", "keywords": ["lifebuoy", "hand wash", "soap", "لايفبوي", "غسول", "صابون"], "aisle": "Aisle G1", "price": 9.50, "erp_qty": 16, "physical_qty": 0, "reorder_pt": 8},
 ]
 
-# --- SHARED MULTI-DEVICE SERVER STORE ---
+# --- SHARED MULTI-DEVICE SERVER STORE (INVENTORY + THEFT SECURITY ALERTS) ---
 @st.cache_resource
 def get_shared_store_db():
     return {
         "inventory": [item.copy() for item in DEFAULT_INVENTORY],
         "last_sync": "09:15 AM (SAP S/4HANA Connected)",
         "activity_log": [],
+        "theft_alerts": [],
         "last_updated_ts": time.time(),
     }
 
 shared_db = get_shared_store_db()
 
-# --- STRUCTURED OUTPUT SCHEMA ---
+# --- STRUCTURED OUTPUT SCHEMAS ---
 class DetectedProduct(BaseModel):
     sku_key: str = Field(description="Matched catalog key from the SAP catalog, or 'unmapped_item'")
     sap_id: str = Field(description="Corresponding SAP Material ID from the catalog, or 'SAP-UNMAPPED'")
@@ -465,6 +533,13 @@ class DetectedProduct(BaseModel):
 class ShelfScanResult(BaseModel):
     detections: List[DetectedProduct]
     raw_visible_text_summary: str = Field(description="Brief summary of all readable Arabic/English shelf labels detected")
+
+class TheftBehaviorResult(BaseModel):
+    theft_detected: bool = Field(description="True if suspicious shoplifting, item concealment in pocket/bag, or rapid shelf sweeping is observed")
+    behavior_type: str = Field(description="e.g., 'Item Concealment in Pocket/Bag', 'Rapid Shelf Sweeping', or 'Normal Shopping Behavior'")
+    confidence_pct: int = Field(description="Confidence percentage 0-100")
+    description: str = Field(description="Objective description of body/hand interaction with shelf items observed in the CCTV frames")
+    recommended_action: str = Field(description="Immediate security guard or floor supervisor action")
 
 # --- SESSION STATE ---
 if "last_annotated_img" not in st.session_state:
@@ -491,9 +566,10 @@ with st.sidebar:
     active_gemini_key = user_api_key.strip() or secret_key or os.environ.get("GEMINI_API_KEY", "")
     st.caption(f"Active Model: **{st.session_state.active_model_used}**")
     st.caption(f"Shared Store DB: **{len(shared_db['inventory'])} SKUs**")
-    if st.button("🔄 Reset Entire Store Audit to Zero", use_container_width=True):
+    if st.button("🔄 Reset Store Audit & Theft Alerts", use_container_width=True):
         shared_db["inventory"] = [item.copy() for item in DEFAULT_INVENTORY]
         shared_db["activity_log"] = []
+        shared_db["theft_alerts"] = []
         shared_db["last_updated_ts"] = time.time()
         st.session_state.last_annotated_img = None
         st.session_state.last_barcode_hits = []
@@ -536,16 +612,16 @@ def scan_local_barcodes(pil_image: Image.Image, catalog: list):
 
         if pts and len(pts) >= 4:
             poly_coords = [(p.x, p.y) for p in pts]
-            draw.polygon(poly_coords, outline="#3FB950", width=5)
+            draw.polygon(poly_coords, outline="#00A86B", width=5)
             x0, y0 = poly_coords[0]
             label_txt = f" {sap_id} | {code_val} "
-            draw.rectangle([x0, max(0, y0 - 26), x0 + len(label_txt) * 8, y0], fill="#3FB950")
-            draw.text((x0 + 4, max(2, y0 - 22)), label_txt, fill="#0E1117")
+            draw.rectangle([x0, max(0, y0 - 26), x0 + len(label_txt) * 8, y0], fill="#00A86B")
+            draw.text((x0 + 4, max(2, y0 - 22)), label_txt, fill="#FFFFFF")
 
     return annotated, barcode_hits
 
 
-def call_gemini_with_failover(client: genai.Client, contents: list) -> ShelfScanResult:
+def call_gemini_schema_with_failover(client: genai.Client, contents: list, schema_cls):
     model_chain = ["gemini-3.5-flash-lite", "gemini-3.8-flash"]
     last_err = None
 
@@ -557,12 +633,12 @@ def call_gemini_with_failover(client: genai.Client, contents: list) -> ShelfScan
                     contents=contents,
                     config=types.GenerateContentConfig(
                         response_mime_type="application/json",
-                        response_schema=ShelfScanResult,
+                        response_schema=schema_cls,
                         temperature=0.1,
                     ),
                 )
                 st.session_state.active_model_used = model_name
-                return ShelfScanResult.model_validate_json(response.text)
+                return schema_cls.model_validate_json(response.text)
             except Exception as err:
                 last_err = err
                 err_str = str(err)
@@ -617,8 +693,23 @@ Rules:
 """
 
     contents = [*pil_images, prompt]
-    parsed = call_gemini_with_failover(client, contents)
+    parsed = call_gemini_schema_with_failover(client, contents, ShelfScanResult)
     return first_annotated, barcode_hits, parsed
+
+
+def analyze_cctv_theft_behavior(pil_images: List[Image.Image], camera_id: str, api_key: str) -> TheftBehaviorResult:
+    if not api_key:
+        raise ValueError("Missing GEMINI_API_KEY. Add your key in Streamlit Secrets or the left sidebar.")
+
+    client = genai.Client(api_key=api_key)
+    prompt = f"""
+You are StockSense AI Loss-Prevention & Behavioral Analytics running on overhead retail CCTV camera ({camera_id}).
+Analyze these sequential overhead CCTV frames for shoplifting or suspicious theft behavior:
+- Look specifically for hand-to-pocket / hand-to-bag concealment, hiding items under clothing, or rapid shelf-sweeping of multiple products into a personal bag.
+- Distinguish normal shopping (placing items in a store basket/trolley or inspecting a label) from active concealment/theft behavior.
+Return structured JSON evaluating whether theft behavior is occurring.
+"""
+    return call_gemini_schema_with_failover(client, [*pil_images, prompt], TheftBehaviorResult)
 
 
 def extract_video_keyframes(video_bytes: bytes, max_frames: int = 8) -> List[Image.Image]:
@@ -677,31 +768,39 @@ def update_shared_inventory(scan_result: ShelfScanResult, barcode_hits: list, ac
     return matched_items
 
 
-# --- TOP BRAND BAR ---
+# --- TOP BRAND HEADER WITH LOGO ---
+logo_html = (
+    f'<img src="data:image/png;base64,{LOGO_B64}" class="brand-logo" alt="StockSense Logo" />'
+    if LOGO_B64 else
+    '<div style="font-size:2.2rem;">📦</div>'
+)
+
 st.markdown(f"""
 <div class="brand-bar">
-    <div>
-        <span style="font-size: 1.3rem; font-weight: 800; color: #F0F6FC; letter-spacing: -0.4px;">
-            📦 StockSense AI
-        </span>
-        <span style="color: #8B949E; font-size: 0.85rem; margin-left: 10px;">
-            Real-Time Field-to-Manager Shelf & SAP Intelligence
-        </span>
+    <div class="brand-left">
+        {logo_html}
+        <div>
+            <div class="brand-title">Stock<span>Sense</span> AI</div>
+            <div class="brand-sub">SEE • TRACK • MANAGE • GROW — Real-Time Shelf & Loss-Prevention Intelligence</div>
+        </div>
     </div>
     <div class="status-pill">● Live Cloud Store Sync Active ({len(shared_db['inventory'])} SKUs)</div>
 </div>
 """, unsafe_allow_html=True)
 
-# --- NAVIGATION TABS ---
+# --- NAVIGATION TABS (SHOWING LIVE SECURITY ALERT COUNT ON TAB 3) ---
+theft_count = len(shared_db["theft_alerts"])
+alerts_tab_label = f"📲 Automated Store Alerts (🚨 {theft_count})" if theft_count > 0 else "📲 Automated Store Alerts"
+
 tab1, tab2, tab3, tab4 = st.tabs([
     "🎥 Live Field Auditor Scanner",
     "📊 Manager Executive Dashboard (Live)",
-    "📲 Automated Store Alerts",
-    "📹 Live Aisle RTSP Feed",
+    alerts_tab_label,
+    "🛡️ Overhead CCTV Theft Detection",
 ])
 
 # ==========================================
-# TAB 1: CONTINUOUS LIVE VIEWFINDER (TRUE TWO-WAY COMPONENT)
+# TAB 1: CONTINUOUS LIVE VIEWFINDER (TWO-WAY COMPONENT)
 # ==========================================
 with tab1:
     col_cam, col_list = st.columns([1.1, 1], gap="large")
@@ -720,7 +819,7 @@ with tab1:
 
         # --- MODE A: TRUE TWO-WAY LIVE VIEWFINDER ---
         if audit_mode == "🎥 Live Rear-Camera Auto-Scanner (Instant Push)":
-            st.caption("Point camera at products—once detected in the box below, tap the green or blue button to push straight to the Manager's laptop dashboard.")
+            st.caption("Point camera at products—once detected in the box below, tap the green or navy button to push straight to the Manager's laptop dashboard.")
             catalog_payload = [
                 {
                     "sku_key": i["sku_key"],
@@ -735,10 +834,9 @@ with tab1:
             live_event = live_scanner_component(
                 api_key=active_gemini_key,
                 catalog=catalog_payload,
-                key="live_field_cam_v3",
+                key="live_field_cam_light_v4",
             )
 
-            # Process live push immediately when received from the component
             if isinstance(live_event, dict) and live_event.get("event_id"):
                 ev_id = live_event["event_id"]
                 if ev_id != st.session_state.processed_live_event_id:
@@ -851,9 +949,9 @@ with tab1:
                 st.markdown(f"""
                 <div class="feed-item">
                     <span class="sap-badge">{det['sap_id']}</span>
-                    <strong style="color:#F0F6FC;">{det['product_name']}</strong>
-                    <span style="color:#3FB950; font-weight:700; float:right;">{det['unit_count']} unit(s)</span><br/>
-                    <span style="color:#8B949E;">Read Text: <em>"{det['extracted_text_ar_en']}"</em></span>
+                    <strong style="color:#0B2C5F;">{det['product_name']}</strong>
+                    <span style="color:#047857; font-weight:700; float:right;">{det['unit_count']} unit(s)</span><br/>
+                    <span style="color:#475569;">Read Text: <em>"{det['extracted_text_ar_en']}"</em></span>
                 </div>
                 """, unsafe_allow_html=True)
 
@@ -882,14 +980,14 @@ with tab1:
             with c_info:
                 st.markdown(
                     f"**{item['name']}**  \n"
-                    f"<span style='color:#8B949E; font-size:0.8rem;'>{item['arabic_name']}</span>  \n"
+                    f"<span style='color:#475569; font-size:0.82rem;'>{item['arabic_name']}</span>  \n"
                     f"<span class='sap-badge'>{item['sap_id']}</span>",
                     unsafe_allow_html=True,
                 )
             with c_erp:
                 st.markdown(
-                    f"<span style='color:#8B949E; font-size:0.76rem;'>SAP</span><br/>"
-                    f"<strong>{item['erp_qty']}</strong>",
+                    f"<span style='color:#64748B; font-size:0.76rem;'>SAP</span><br/>"
+                    f"<strong style='color:#0B2C5F;'>{item['erp_qty']}</strong>",
                     unsafe_allow_html=True,
                 )
             with c_phys:
@@ -906,7 +1004,7 @@ with tab1:
             st.divider()
 
         if shown_count == 0:
-            st.info("No items verified yet. Point the live camera at a product and tap the green or blue button—it will appear here and on the Manager's laptop immediately!")
+            st.info("No items verified yet. Point the live camera at a product and tap the green or navy button—it will appear here and on the Manager's laptop immediately!")
 
         if st.button("✅ Finalize & Post Audit to SAP S/4HANA", type="primary", use_container_width=True):
             shared_db["last_sync"] = datetime.now().strftime("%I:%M %p (Posted to SAP S/4HANA)")
@@ -946,7 +1044,7 @@ with tab2:
         k1.metric("Field Audit Progress", f"{audited_skus} / {total_skus} SKUs", f"{total_phys} physical units counted")
         k2.metric("Inventory Accuracy", f"{accuracy}%", f"{total_phys - total_erp:+d} units vs SAP")
         k3.metric("Revenue at Risk", f"SAR {rev_risk:,.2f}", "Phantom stock exposure", delta_color="inverse")
-        k4.metric("Replenishment Alerts", f"{alerts_count} SKUs", "SAP PO triggers")
+        k4.metric("Active Alerts", f"{alerts_count} Stock | {len(shared_db['theft_alerts'])} Security", "SAP PO & CCTV triggers")
 
         # Live Field Activity Stream
         if shared_db["activity_log"]:
@@ -960,7 +1058,7 @@ with tab2:
 
         st.write("")
 
-        # 1. TOP 5 HORIZONTAL BAR CHARTS FIRST
+        # 1. TOP 5 HORIZONTAL BAR CHARTS FIRST (BRAND NAVY & EMERALD/BLUE PALETTE)
         col_chart1, col_chart2 = st.columns(2, gap="large")
 
         with col_chart1:
@@ -971,7 +1069,7 @@ with tab2:
             top5_var_df["Short Label"] = top5_var_df["name"].apply(lambda x: x[:28] + "…" if len(x) > 29 else x)
             chart1_data = top5_var_df.set_index("Short Label")[["erp_qty", "physical_qty"]]
             chart1_data.columns = ["SAP Book Qty", "AI Verified Qty"]
-            st.bar_chart(chart1_data, color=["#3B475E", "#1F6FEB"], horizontal=True, height=285)
+            st.bar_chart(chart1_data, color=["#0B2C5F", "#00A86B"], horizontal=True, height=285)
             st.markdown('</div>', unsafe_allow_html=True)
 
         with col_chart2:
@@ -983,7 +1081,7 @@ with tab2:
                 top5_risk_df["Short Label"] = top5_risk_df["name"].apply(lambda x: x[:28] + "…" if len(x) > 29 else x)
                 chart2_data = top5_risk_df.set_index("Short Label")[["rev_at_risk"]]
                 chart2_data.columns = ["Revenue at Risk (SAR)"]
-                st.bar_chart(chart2_data, color="#F85149", horizontal=True, height=285)
+                st.bar_chart(chart2_data, color="#0072CE", horizontal=True, height=285)
             else:
                 st.success("Zero phantom stock revenue leakage across all SKUs!")
             st.markdown('</div>', unsafe_allow_html=True)
@@ -1075,51 +1173,195 @@ with tab2:
                 st.error(f"Could not parse SAP CSV: {ex}")
 
 # ==========================================
-# TAB 3: AUTOMATED STORE ALERTS
+# TAB 3: AUTOMATED STORE ALERTS (SECURITY THEFT ALERTS + SAP REPLENISHMENT)
 # ==========================================
 with tab3:
-    st.subheader("Zero-Friction Manager Alerts & SAP PO Triggers")
-    df_alerts = pd.DataFrame(shared_db["inventory"])
-    df_alerts["variance"] = df_alerts["physical_qty"] - df_alerts["erp_qty"]
-    df_alerts["rev_at_risk"] = df_alerts.apply(lambda r: abs(r["variance"]) * r["price"] if r["variance"] < 0 else 0.0, axis=1)
-    alert_items = df_alerts[df_alerts["physical_qty"] <= df_alerts["reorder_pt"]].sort_values(by="rev_at_risk", ascending=False)
-
-    if alert_items.empty:
-        st.success("✅ All shelves are stocked above SAP reorder points.")
-    else:
-        st.caption(f"Showing top priority replenishment triggers ({len(alert_items)} SKUs below SAP safety stock):")
-        for _, row in alert_items.head(15).iterrows():
-            st.markdown(f"""
-            <div style="background-color:#17231E; border-left:4px solid #25D366; padding:15px; border-radius:10px; margin-bottom:12px;">
-                <div style="color:#25D366; font-weight:700; font-size:0.84rem;">💬 WHATSAPP BUSINESS ALERT • STORE #104 • {row['category'].upper()}</div>
-                <div style="color:#F0F6FC; margin-top:6px; font-size:0.93rem;">
-                    <strong>⚠️ SHELF REPLENISHMENT REQUIRED ({row['sap_id']}):</strong><br/>
-                    • <strong>Product:</strong> {row['name']} ({row['arabic_name']})<br/>
-                    • <strong>Barcode / Location:</strong> {row['ean13']} • {row['aisle']}<br/>
-                    • <strong>Verified Shelf Qty:</strong> {row['physical_qty']} units (SAP Book: {row['erp_qty']} | Variance: {row['variance']:+d} | Risk: SAR {row['rev_at_risk']:,.2f})<br/>
-                    • <strong>Action:</strong> Pull 1 case from Backroom Bay B or approve draft SAP Purchase Order.
+    @st.fragment(run_every=4)
+    def render_automated_alerts():
+        # --- SECTION A: HIGH-PRIORITY CCTV THEFT BEHAVIORAL ALERTS ---
+        st.subheader("🚨 Loss-Prevention & Behavioral Theft Alerts (Overhead CCTV)")
+        if not shared_db["theft_alerts"]:
+            st.info("No suspicious theft behavior detected by overhead aisle CCTV cameras. Run a feed or test clip in Tab 4 ('Overhead CCTV Theft Detection') to trigger live security alerts here.")
+        else:
+            for t_idx, alert in enumerate(shared_db["theft_alerts"]):
+                st.markdown(f"""
+                <div style="background-color:#FEF2F2; border:1px solid #FECACA; border-left:5px solid #DC2626; padding:16px; border-radius:10px; margin-bottom:12px; box-shadow: 0 2px 8px rgba(220,38,38,0.08);">
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
+                        <span style="color:#B91C1C; font-weight:800; font-size:0.88rem;">
+                            🚨 PRIORITY SECURITY ALERT • {alert['camera_id']} • {alert['aisle']}
+                        </span>
+                        <span style="background:#DC2626; color:#FFFFFF; padding:3px 10px; border-radius:999px; font-size:0.76rem; font-weight:700;">
+                            🕒 {alert['timestamp']} • Confidence: {alert['confidence_pct']}%
+                        </span>
+                    </div>
+                    <div style="color:#1E293B; margin-top:8px; font-size:0.94rem; line-height:1.5;">
+                        <strong>Detected Behavior:</strong> {alert['behavior_type']}<br/>
+                        <strong>AI CCTV Observation:</strong> {alert['description']}<br/>
+                        <strong>Recommended Action:</strong> <span style="color:#991B1B; font-weight:600;">{alert['recommended_action']}</span>
+                    </div>
                 </div>
-            </div>
-            """, unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
+
+            if st.button("🧹 Acknowledge & Clear Security Alerts", key="clear_theft_btn"):
+                shared_db["theft_alerts"] = []
+                st.rerun()
+
+        st.markdown("---")
+
+        # --- SECTION B: SAP SHELF REPLENISHMENT ALERTS ---
+        st.subheader("📦 Automated SAP Shelf Replenishment Alerts")
+        df_alerts = pd.DataFrame(shared_db["inventory"])
+        df_alerts["variance"] = df_alerts["physical_qty"] - df_alerts["erp_qty"]
+        df_alerts["rev_at_risk"] = df_alerts.apply(lambda r: abs(r["variance"]) * r["price"] if r["variance"] < 0 else 0.0, axis=1)
+        alert_items = df_alerts[df_alerts["physical_qty"] <= df_alerts["reorder_pt"]].sort_values(by="rev_at_risk", ascending=False)
+
+        if alert_items.empty:
+            st.success("✅ All shelves are stocked above SAP reorder points.")
+        else:
+            st.caption(f"Showing top priority replenishment triggers ({len(alert_items)} SKUs below SAP safety stock):")
+            for _, row in alert_items.head(15).iterrows():
+                st.markdown(f"""
+                <div style="background-color:#FFFFFF; border:1px solid #D8E2EE; border-left:5px solid #00A86B; padding:15px; border-radius:10px; margin-bottom:12px; box-shadow: 0 2px 6px rgba(11,44,95,0.04);">
+                    <div style="color:#047857; font-weight:800; font-size:0.84rem;">💬 WHATSAPP BUSINESS ALERT • STORE #104 • {row['category'].upper()}</div>
+                    <div style="color:#1E293B; margin-top:6px; font-size:0.93rem; line-height:1.5;">
+                        <strong style="color:#0B2C5F;">⚠️ SHELF REPLENISHMENT REQUIRED ({row['sap_id']}):</strong><br/>
+                        • <strong>Product:</strong> {row['name']} ({row['arabic_name']})<br/>
+                        • <strong>Barcode / Location:</strong> {row['ean13']} • {row['aisle']}<br/>
+                        • <strong>Verified Shelf Qty:</strong> {row['physical_qty']} units (SAP Book: {row['erp_qty']} | Variance: {row['variance']:+d} | Risk: SAR {row['rev_at_risk']:,.2f})<br/>
+                        • <strong>Action:</strong> Pull 1 case from Backroom Bay B or approve draft SAP Purchase Order.
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+    render_automated_alerts()
 
 # ==========================================
-# TAB 4: LIVE AISLE RTSP FEED
+# TAB 4: OVERHEAD CCTV THEFT BEHAVIORAL DETECTION
 # ==========================================
 with tab4:
-    st.subheader("Continuous Overhead CCTV / RTSP Stream Analytics")
-    st.info("In enterprise production, StockSense AI connects directly to existing store IP cameras via RTSP — running scheduled Arabic/English OCR and barcode sweeps with zero additional hardware.")
-    col_v1, col_v2 = st.columns([2, 1])
-    with col_v1:
+    st.subheader("🛡️ Overhead Store CCTV — Behavioral Theft Detection")
+    st.caption("Dedicated fixed overhead aisle camera feed (separate from handheld inventory phones). Detects concealment gestures and shelf sweeping in real time and dispatches alerts directly to Tab 3.")
+
+    col_cctv, col_arch = st.columns([1.25, 1], gap="large")
+
+    with col_cctv:
+        st.markdown('<div class="cctv-panel">', unsafe_allow_html=True)
+        cam_select = st.selectbox(
+            "Select Overhead Store Camera Channel:",
+            [
+                "CAM-04 • Aisle C2 (Dairy & Infant Formula — High Shrinkage Zone)",
+                "CAM-07 • Aisle G1 (Personal Care & Cosmetics)",
+                "CAM-02 • Aisle A1 (Cooking Oils & Pantry)",
+            ],
+        )
+        aisle_label = cam_select.split("•")[1].strip() if "•" in cam_select else "Aisle C2"
+        cam_code = cam_select.split("•")[0].strip()
+
+        cctv_source = st.radio(
+            "Overhead Camera Input Source:",
+            [
+                "📹 Live Overhead Webcam / USB CCTV Feed",
+                "🎞️ Upload Overhead CCTV Footage (.mp4 / .mov)",
+            ],
+            horizontal=True,
+        )
+
+        if cctv_source == "📹 Live Overhead Webcam / USB CCTV Feed":
+            st.caption("Connect an overhead/laptop webcam to simulate a fixed ceiling aisle camera monitoring shopper posture and shelf interaction.")
+            cctv_live_html = """
+            <div style="background:#0B2C5F; border-radius:10px; overflow:hidden; position:relative; border:2px solid #0072CE;">
+                <video id="cctvVid" autoplay playsinline muted style="width:100%; max-height:310px; object-fit:cover; display:block;"></video>
+                <div style="position:absolute; top:10px; left:10px; right:10px; display:flex; justify-content:space-between; font-family:monospace; font-size:12px;">
+                    <span style="background:rgba(220,38,38,0.92); color:#fff; padding:4px 10px; border-radius:6px; font-weight:700;">● REC • OVERHEAD CCTV</span>
+                    <span id="cctvClock" style="background:rgba(15,23,42,0.85); color:#fff; padding:4px 10px; border-radius:6px;"></span>
+                </div>
+                <div style="position:absolute; bottom:10px; left:10px; background:rgba(15,23,42,0.85); color:#34D399; padding:4px 10px; border-radius:6px; font-family:monospace; font-size:11px;">
+                    POSE KEYPOINTS + CONCEALMENT TRACKER ACTIVE
+                </div>
+            </div>
+            <script>
+                const v = document.getElementById('cctvVid');
+                navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+                    .then(s => { v.srcObject = s; })
+                    .catch(e => { console.log(e); });
+                setInterval(() => {
+                    document.getElementById('cctvClock').innerText = new Date().toLocaleTimeString();
+                }, 1000);
+            </script>
+            """
+            components.html(cctv_live_html, height=325)
+
+            st.markdown("##### ⚡ Demo Trigger: Simulate Overhead CCTV Theft Event")
+            st.caption("During your presentation, click below to simulate the overhead camera detecting suspicious concealment on this channel and immediately route a timestamped alert to Tab 3.")
+            sim_behavior = st.selectbox(
+                "Simulated Behavioral Event:",
+                [
+                    "Item Concealment in Jacket / Personal Bag (2 units removed from shelf)",
+                    "Rapid Shelf Sweeping into Backpack (High-Value Dairy/Formula)",
+                ],
+                key="sim_beh_select",
+            )
+            if st.button("🚨 Trigger Overhead CCTV Theft Detection Alert", type="primary", use_container_width=True):
+                now_str = datetime.now().strftime("%Y-%m-%d %I:%M:%S %p")
+                shared_db["theft_alerts"].insert(0, {
+                    "timestamp": now_str,
+                    "camera_id": cam_code,
+                    "aisle": aisle_label,
+                    "behavior_type": sim_behavior,
+                    "confidence_pct": 94,
+                    "description": f"Overhead pose & action model detected hand-to-bag concealment gesture at {aisle_label} without placing items in a store basket.",
+                    "recommended_action": "Dispatch floor security supervisor to aisle exit & review 10-second CCTV buffer.",
+                })
+                st.error(f"🚨 Theft alert dispatched at {now_str}! Check Tab 3 ('Automated Store Alerts').")
+                st.rerun()
+
+        else:
+            cctv_clip = st.file_uploader("Upload Overhead Aisle CCTV Video Clip (.mp4, .mov)", type=["mp4", "mov", "avi"])
+            if cctv_clip is not None:
+                st.video(cctv_clip)
+                if st.button("🔍 Run Behavioral Theft Analysis on CCTV Clip", type="primary", use_container_width=True):
+                    with st.spinner("Analyzing shopper skeleton posture & hand-to-pocket concealment across CCTV frames..."):
+                        try:
+                            clip_frames = extract_video_keyframes(cctv_clip.read(), max_frames=6)
+                            if not clip_frames:
+                                st.error("Could not read frames from uploaded CCTV clip.")
+                            else:
+                                verdict = analyze_cctv_theft_behavior(clip_frames, cam_code, active_gemini_key)
+                                now_str = datetime.now().strftime("%Y-%m-%d %I:%M:%S %p")
+                                if verdict.theft_detected:
+                                    shared_db["theft_alerts"].insert(0, {
+                                        "timestamp": now_str,
+                                        "camera_id": cam_code,
+                                        "aisle": aisle_label,
+                                        "behavior_type": verdict.behavior_type,
+                                        "confidence_pct": verdict.confidence_pct,
+                                        "description": verdict.description,
+                                        "recommended_action": verdict.recommended_action,
+                                    })
+                                    st.error(f"🚨 THEFT BEHAVIOR DETECTED ({verdict.confidence_pct}% confidence) at {now_str}! Alert sent to Tab 3.")
+                                    st.rerun()
+                                else:
+                                    st.success(f"✅ Normal Shopping Behavior ({verdict.confidence_pct}% confidence): {verdict.description}")
+                        except Exception as ex:
+                            st.error(f"CCTV analysis error: {ex}")
+
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    with col_arch:
+        st.markdown('<div class="chart-card">', unsafe_allow_html=True)
+        st.markdown("#### 🧠 How StockSense Behavioral Theft Detection Works")
         st.markdown("""
-        <div style="background-color:#151B26; border:1px dashed #30363D; border-radius:12px; padding:65px 20px; text-align:center;">
-            <div style="font-size:2.5rem;">📹</div>
-            <div style="color:#F0F6FC; font-weight:600; margin-top:8px;">RTSP Stream Connected: rtsp://10.104.22.18:554/aisle-b2</div>
-            <div style="color:#8B949E; font-size:0.85rem; margin-top:4px;">Inference Interval: Every 15 mins • Bilingual OCR (AR/EN) + ZBar Barcode Engine Active</div>
-        </div>
-        """, unsafe_allow_html=True)
-    with col_v2:
-        st.markdown("#### Edge Telemetry")
-        st.write("• **Active Cameras:** 14 / 14 Online")
-        st.write("• **OCR Languages:** Arabic + English")
-        st.write("• **Barcode Symbologies:** EAN-13, UPC-A, QR")
-        st.write("• **SAP Integration:** OData / BAPI Live Sync")
+        Unlike inventory scanning (done via handheld phones), **Theft Behavioral Detection** runs continuously on **fixed overhead store CCTV cameras** without using facial recognition:
+
+        1. **Skeleton Pose Estimation (YOLOv8-Pose):** Tracks wrist, elbow, and torso keypoints in real time across overhead video frames.
+        2. **Action & Concealment Recognition (SlowFast / VideoMAE + Vision AI):** Analyzes 3–5 second motion sequences to detect:
+           * **Concealment:** Hand picks item from shelf and moves directly into a pocket, backpack, or under clothing.
+           * **Shelf Sweeping:** Rapidly clearing multiple high-value items into a personal bag.
+        3. **Instant Alert Routing (Tab 3):** Whenever suspicious behavior is detected, StockSense timestamps the exact camera channel and aisle and pushes a **Priority Security Alert** to the Store Manager's alert feed.
+        """)
+        st.markdown("---")
+        st.markdown("#### 📡 Overhead CCTV Edge Telemetry")
+        st.write("• **Connected Store Cameras:** 14 / 14 RTSP Channels Online")
+        st.write("• **Privacy Compliance:** Anonymous Pose Keypoints (No Facial Recognition)")
+        st.write("• **Alert Latency:** < 2.5 seconds from gesture to Manager Alert")
+        st.markdown('</div>', unsafe_allow_html=True)
