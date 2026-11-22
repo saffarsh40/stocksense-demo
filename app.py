@@ -35,20 +35,19 @@ def get_logo_base64() -> str:
 
 LOGO_B64 = get_logo_base64()
 
-# --- ENTERPRISE LIGHT THEME MATCHED TO STOCKSENSE LOGO (NAVY #0B2C5F, BLUE #0072CE, EMERALD #00A86B) ---
+# --- RICH BRAND THEME MATCHED TO STOCKSENSE LOGO (NAVY #0B2C5F, BLUE #0072CE, EMERALD #00A86B) ---
 st.markdown("""
 <style>
     .stApp {
-        background-color: #F4F7FB;
-        color: #0F172A;
+        background: linear-gradient(160deg, #E8F0FA 0%, #F1F6FC 52%, #E9F7F2 100%);
+        color: #0B2C5F;
     }
     #MainMenu, footer {visibility: hidden;}
     .block-container {
-        padding-top: 1.5rem;
+        padding-top: 1.4rem;
         padding-bottom: 2.5rem;
         max-width: 1360px;
     }
-    /* Brand Header Card */
     .brand-bar {
         display: flex;
         justify-content: space-between;
@@ -56,12 +55,13 @@ st.markdown("""
         flex-wrap: wrap;
         gap: 14px;
         padding: 14px 22px;
-        background: #FFFFFF;
-        border: 1px solid #D8E2EE;
-        border-top: 4px solid #0072CE;
+        background: linear-gradient(90deg, #FFFFFF 0%, #F5FAFF 65%, #EFFBF6 100%);
+        border: 1px solid #C6D8EC;
+        border-left: 6px solid #0B2C5F;
+        border-right: 6px solid #00A86B;
         border-radius: 14px;
-        margin-bottom: 18px;
-        box-shadow: 0 4px 16px rgba(11, 44, 95, 0.06);
+        margin-bottom: 16px;
+        box-shadow: 0 6px 18px rgba(11, 44, 95, 0.08);
     }
     .brand-left {
         display: flex;
@@ -69,13 +69,16 @@ st.markdown("""
         gap: 14px;
     }
     .brand-logo {
-        height: 54px;
+        height: 58px;
         width: auto;
-        border-radius: 8px;
+        border-radius: 10px;
+        background: #FFFFFF;
+        padding: 3px;
+        border: 1px solid #DCE7F3;
         object-fit: contain;
     }
     .brand-title {
-        font-size: 1.45rem;
+        font-size: 1.55rem;
         font-weight: 800;
         color: #0B2C5F;
         letter-spacing: -0.4px;
@@ -85,105 +88,134 @@ st.markdown("""
         color: #00A86B;
     }
     .brand-sub {
-        color: #475569;
-        font-size: 0.84rem;
-        font-weight: 500;
-        margin-top: 2px;
+        color: #334155;
+        font-size: 0.85rem;
+        font-weight: 600;
+        margin-top: 3px;
     }
     .status-pill {
-        background-color: #ECFDF5;
-        color: #047857;
-        border: 1px solid #A7F3D0;
-        padding: 6px 14px;
+        background: linear-gradient(90deg, #DCFCE7 0%, #D1FAE5 100%);
+        color: #065F46;
+        border: 1px solid #6EE7B7;
+        padding: 7px 15px;
         border-radius: 999px;
-        font-size: 0.8rem;
+        font-size: 0.82rem;
         font-weight: 700;
     }
-    /* KPI Metric Cards */
-    div[data-testid="stMetric"] {
-        background: #FFFFFF;
-        border: 1px solid #D8E2EE;
-        border-left: 4px solid #0072CE;
-        padding: 14px 16px;
-        border-radius: 12px;
-        box-shadow: 0 2px 10px rgba(11, 44, 95, 0.04);
+    .user-badge {
+        background: #EFF6FF;
+        color: #0B2C5F;
+        border: 1px solid #93C5FD;
+        padding: 6px 14px;
+        border-radius: 999px;
+        font-size: 0.82rem;
+        font-weight: 700;
     }
-    div[data-testid="stMetricLabel"] {
-        color: #475569 !important;
-        font-weight: 600 !important;
-    }
-    div[data-testid="stMetricValue"] {
-        font-size: 1.6rem !important;
-        font-weight: 800 !important;
-        color: #0B2C5F !important;
-    }
-    /* Navigation Tabs */
     .stTabs [data-baseweb="tab-list"] {
-        gap: 6px;
-        background-color: #FFFFFF;
+        gap: 8px;
+        background-color: #DCE8F6;
         padding: 6px;
         border-radius: 12px;
-        border: 1px solid #D8E2EE;
-        box-shadow: 0 2px 8px rgba(11, 44, 95, 0.04);
+        border: 1px solid #BFD3EA;
         overflow-x: auto;
     }
     .stTabs [data-baseweb="tab"] {
         border-radius: 8px;
-        padding: 8px 15px;
-        font-weight: 600;
-        color: #334155;
+        padding: 9px 16px;
+        font-weight: 700;
+        color: #0B2C5F !important;
+        background-color: rgba(255, 255, 255, 0.65);
         white-space: nowrap;
     }
     .stTabs [aria-selected="true"] {
         background: linear-gradient(90deg, #0B2C5F 0%, #0072CE 100%) !important;
         color: #FFFFFF !important;
+        box-shadow: 0 3px 10px rgba(0, 114, 206, 0.25);
     }
-    /* Chart & Content Cards */
+    div[data-testid="stMetric"] {
+        background: linear-gradient(180deg, #FFFFFF 0%, #F4F9FF 100%);
+        border: 1px solid #C6D8EC;
+        border-top: 4px solid #0072CE;
+        padding: 15px 18px;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(11, 44, 95, 0.06);
+    }
+    div[data-testid="stMetricLabel"] p,
+    div[data-testid="stMetricLabel"] label,
+    div[data-testid="stMetricLabel"] {
+        color: #1E3A5F !important;
+        font-size: 0.88rem !important;
+        font-weight: 700 !important;
+        opacity: 1 !important;
+    }
+    div[data-testid="stMetricValue"] {
+        font-size: 1.65rem !important;
+        font-weight: 800 !important;
+        color: #0B2C5F !important;
+    }
+    .stRadio label, .stRadio p, .stCheckbox label, .stCheckbox p,
+    .stSelectbox label, .stTextInput label, .stNumberInput label, .stFileUploader label {
+        color: #0B2C5F !important;
+        font-weight: 600 !important;
+    }
     .chart-card {
-        background-color: #FFFFFF;
-        border: 1px solid #D8E2EE;
+        background: linear-gradient(180deg, #FFFFFF 0%, #F8FBFF 100%);
+        border: 1px solid #C6D8EC;
+        border-top: 4px solid #00A86B;
         border-radius: 14px;
         padding: 16px 18px 10px 18px;
         margin-bottom: 14px;
-        box-shadow: 0 2px 10px rgba(11, 44, 95, 0.04);
+        box-shadow: 0 4px 14px rgba(11, 44, 95, 0.06);
+    }
+    .login-card {
+        background: #FFFFFF;
+        border: 1px solid #C6D8EC;
+        border-top: 5px solid #0072CE;
+        border-radius: 16px;
+        padding: 24px 28px;
+        box-shadow: 0 8px 24px rgba(11, 44, 95, 0.08);
+        max-width: 560px;
+        margin: 18px auto;
     }
     .sap-badge {
         display: inline-block;
-        background-color: #EFF6FF;
-        color: #0072CE;
-        border: 1px solid #BFDBFE;
+        background-color: #E0EEFF;
+        color: #0B2C5F;
+        border: 1px solid #93C5FD;
         padding: 2px 8px;
         border-radius: 6px;
         font-family: monospace;
-        font-size: 0.75rem;
+        font-size: 0.76rem;
         font-weight: 700;
         margin-right: 6px;
     }
     .feed-item {
         background-color: #FFFFFF;
-        border: 1px solid #E2E8F0;
-        border-left: 4px solid #00A86B;
+        border: 1px solid #CBDCEB;
+        border-left: 5px solid #00A86B;
         padding: 10px 14px;
         border-radius: 0 10px 10px 0;
         margin-bottom: 8px;
-        font-size: 0.86rem;
-        color: #1E293B;
+        font-size: 0.87rem;
+        color: #0F172A;
+        box-shadow: 0 2px 6px rgba(11, 44, 95, 0.04);
     }
     .cctv-panel {
-        background: #FFFFFF;
-        border: 1px solid #D8E2EE;
+        background: linear-gradient(180deg, #FFFFFF 0%, #F4F9FF 100%);
+        border: 1px solid #C6D8EC;
         border-top: 4px solid #0B2C5F;
         border-radius: 14px;
         padding: 18px;
-        box-shadow: 0 4px 14px rgba(11, 44, 95, 0.05);
+        box-shadow: 0 4px 14px rgba(11, 44, 95, 0.06);
     }
     div.stButton > button[kind="primary"] {
         background: linear-gradient(90deg, #0072CE 0%, #00A86B 100%);
-        color: #FFFFFF;
+        color: #FFFFFF !important;
         border: none;
         border-radius: 10px;
         font-weight: 700;
         padding: 0.65rem 1.2rem;
+        box-shadow: 0 3px 10px rgba(0, 114, 206, 0.22);
     }
     h1, h2, h3, h4 {
         color: #0B2C5F !important;
@@ -191,10 +223,10 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- REGISTER TWO-WAY LIVE SHELF SCANNER COMPONENT (LIGHT-THEMED) ---
+# --- REGISTER TWO-WAY LIVE SHELF SCANNER COMPONENT ---
 @st.cache_resource
 def get_live_scanner_component():
-    comp_dir = os.path.join(tempfile.gettempdir(), "stocksense_live_scanner_light_v4")
+    comp_dir = os.path.join(tempfile.gettempdir(), "stocksense_live_scanner_brand_v6")
     os.makedirs(comp_dir, exist_ok=True)
     index_path = os.path.join(comp_dir, "index.html")
     html_code = """<!DOCTYPE html>
@@ -203,22 +235,20 @@ def get_live_scanner_component():
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <style>
-  body { margin: 0; padding: 0; background: transparent; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #0F172A; }
-  .card { background:#FFFFFF; border:1px solid #D8E2EE; border-radius:14px; padding:12px; box-sizing:border-box; box-shadow: 0 2px 10px rgba(11,44,95,0.05); }
-  .vid-wrap { position:relative; width:100%; border-radius:10px; overflow:hidden; background:#0B2C5F; }
+  body { margin: 0; padding: 0; background: transparent; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #0B2C5F; }
+  .card { background: linear-gradient(180deg, #FFFFFF 0%, #F4F9FF 100%); border: 1px solid #C6D8EC; border-top: 4px solid #0072CE; border-radius:14px; padding:12px; box-sizing:border-box; box-shadow: 0 4px 14px rgba(11,44,95,0.07); }
+  .vid-wrap { position:relative; width:100%; border-radius:10px; overflow:hidden; background:#0B2C5F; border: 1px solid #93C5FD; }
   video { width:100%; max-height:260px; object-fit:cover; display:block; }
   .hud { position:absolute; top:10px; left:10px; right:10px; display:flex; justify-content:space-between; align-items:center; }
-  .badge { background:rgba(255,255,255,0.95); color:#047857; border:1px solid #00A86B; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:700; }
+  .badge { background:rgba(255,255,255,0.96); color:#047857; border:1px solid #00A86B; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:700; }
   .timer { background:rgba(11,44,95,0.92); color:#FFFFFF; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:600; }
   .row { display:flex; gap:8px; margin-top:10px; }
-  .btn-start { flex:1; background:#0072CE; color:#fff; border:none; padding:11px; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer; }
-  .btn-now { background:#F1F5F9; color:#0B2C5F; border:1px solid #CBD5E1; padding:11px 14px; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer; }
-  .results { margin-top:10px; background:#F8FAFC; border:1px solid #CBD5E1; border-radius:8px; padding:12px; min-height:95px; max-height:175px; overflow-y:auto; font-size:13px; color:#1E293B; }
+  .btn-start { flex:1; background: linear-gradient(90deg, #0072CE 0%, #0284C7 100%); color:#fff; border:none; padding:11px; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer; }
+  .btn-now { background:#E0EEFF; color:#0B2C5F; border:1px solid #93C5FD; padding:11px 14px; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer; }
+  .results { margin-top:10px; background:#FFFFFF; border:1px solid #CBDCEB; border-radius:8px; padding:12px; min-height:95px; max-height:175px; overflow-y:auto; font-size:13px; color:#1E293B; }
   .sync-col { display:flex; flex-direction:column; gap:8px; margin-top:12px; }
-  .btn-green { width:100%; background:#00A86B; color:#FFFFFF; border:none; padding:13px; border-radius:8px; font-weight:700; font-size:14px; cursor:pointer; }
-  .btn-green:active { background:#059669; }
-  .btn-blue { width:100%; background:#0B2C5F; color:#FFFFFF; border:none; padding:13px; border-radius:8px; font-weight:700; font-size:14px; cursor:pointer; }
-  .btn-blue:active { background:#0072CE; }
+  .btn-green { width:100%; background: linear-gradient(90deg, #00A86B 0%, #059669 100%); color:#FFFFFF; border:none; padding:13px; border-radius:8px; font-weight:700; font-size:14px; cursor:pointer; }
+  .btn-blue { width:100%; background: linear-gradient(90deg, #0B2C5F 0%, #0072CE 100%); color:#FFFFFF; border:none; padding:13px; border-radius:8px; font-weight:700; font-size:14px; cursor:pointer; }
   .status { margin-top:8px; text-align:center; font-size:12px; font-weight:700; min-height:18px; }
 </style>
 </head>
@@ -240,7 +270,7 @@ def get_live_scanner_component():
   </div>
 
   <div id="liveResults" class="results">
-    <span style="color:#64748B;">Point camera at products and tap <b>Start Live AI Viewfinder</b>...</span>
+    <span style="color:#475569;">Point camera at products and tap <b>Start Live AI Viewfinder</b>...</span>
   </div>
 
   <div class="sync-col">
@@ -410,7 +440,7 @@ async function scanSingleNow(forceManual) {
     let html = `<div style="color:#047857; font-weight:700; margin-bottom:6px;">✅ Live Shelf View (${new Date().toLocaleTimeString()})</div>`;
 
     if (result.parsed.items.length === 0) {
-      html += `<div style="color:#64748B;">No product label in frame — pan camera toward a product...</div>`;
+      html += `<div style="color:#475569;">No product label in frame — pan camera toward a product...</div>`;
     } else {
       currentFrameItems = result.parsed.items;
       result.parsed.items.forEach(it => {
@@ -444,13 +474,12 @@ async function scanSingleNow(forceManual) {
 </html>"""
     with open(index_path, "w", encoding="utf-8") as f:
         f.write(html_code)
-    return components.declare_component("stocksense_live_scanner_light", path=comp_dir)
+    return components.declare_component("stocksense_live_scanner_brand_v6", path=comp_dir)
 
 live_scanner_component = get_live_scanner_component()
 
 # --- 42-SKU SAUDI SUPERMARKET SAP MATERIAL MASTER CATALOG ---
 DEFAULT_INVENTORY = [
-    # Pantry & Cooking Staples
     {"sku_key": "osra_sugar", "sap_id": "SAP-10045210", "ean13": "6281007041012", "category": "Pantry", "name": "Osra White Sugar 1kg", "arabic_name": "سكر الأسرة الأبيض 1 كجم", "keywords": ["osra", "al osra", "sugar", "أسرة", "الأسرة", "سكر", "قيراط"], "aisle": "Aisle B2", "price": 5.50, "erp_qty": 12, "physical_qty": 0, "reorder_pt": 6},
     {"sku_key": "kuwait_flour", "sap_id": "SAP-10045218", "ean13": "6271001010025", "category": "Pantry", "name": "Kuwait Patent Flour 2kg", "arabic_name": "طحين الكويت الفاخر 2 كجم", "keywords": ["kuwait", "flour", "طحين", "دقيق", "الكويت", "المطاحن"], "aisle": "Aisle B2", "price": 8.00, "erp_qty": 15, "physical_qty": 0, "reorder_pt": 8},
     {"sku_key": "afia_oil", "sap_id": "SAP-10045304", "ean13": "6281018001053", "category": "Pantry", "name": "Afia Corn Oil 1.5L", "arabic_name": "زيت ذرة عافية 1.5 لتر", "keywords": ["afia", "corn oil", "oil", "عافية", "زيت", "ذرة"], "aisle": "Aisle A1", "price": 24.50, "erp_qty": 8, "physical_qty": 0, "reorder_pt": 5},
@@ -462,7 +491,6 @@ DEFAULT_INVENTORY = [
     {"sku_key": "al_alali_paste", "sap_id": "SAP-10045348", "ean13": "6281014002011", "category": "Pantry", "name": "Al Alali Tomato Paste 135g", "arabic_name": "معجون طماطم العلالي 135 جم", "keywords": ["al alali", "tomato paste", "العلالي", "معجون طماطم", "صلصة"], "aisle": "Aisle A2", "price": 2.25, "erp_qty": 25, "physical_qty": 0, "reorder_pt": 12},
     {"sku_key": "maggi_cubes", "sap_id": "SAP-10045355", "ean13": "7613035012042", "category": "Pantry", "name": "Maggi Chicken Bouillon 24 Cubes", "arabic_name": "مرقة دجاج ماجي 24 مكعب", "keywords": ["maggi", "bouillon", "chicken", "ماجي", "مرقة"], "aisle": "Aisle A2", "price": 11.50, "erp_qty": 16, "physical_qty": 0, "reorder_pt": 8},
 
-    # Dairy, Cheese & Breakfast
     {"sku_key": "almarai_milk", "sap_id": "SAP-10045411", "ean13": "6281007020017", "category": "Dairy & Breakfast", "name": "Almarai Fresh Milk 1L", "arabic_name": "حليب المراعي طازج 1 لتر", "keywords": ["almarai", "milk", "fresh", "المراعي", "حليب", "طازج"], "aisle": "Chiller C1", "price": 6.00, "erp_qty": 20, "physical_qty": 0, "reorder_pt": 10},
     {"sku_key": "almarai_laban", "sap_id": "SAP-10045418", "ean13": "6281007020093", "category": "Dairy & Breakfast", "name": "Almarai Fresh Laban 1L", "arabic_name": "لبن المراعي طازج 1 لتر", "keywords": ["laban", "almarai", "لبن", "المراعي"], "aisle": "Chiller C1", "price": 6.00, "erp_qty": 18, "physical_qty": 0, "reorder_pt": 9},
     {"sku_key": "puck_cheese", "sap_id": "SAP-10045424", "ean13": "5760466901024", "category": "Dairy & Breakfast", "name": "Puck Cream Cheese Jar 500g", "arabic_name": "جبنة بوك كريم قابلة للدهن 500 جم", "keywords": ["puck", "cream cheese", "cheese", "بوك", "جبن", "جبنة"], "aisle": "Chiller C2", "price": 19.50, "erp_qty": 12, "physical_qty": 0, "reorder_pt": 6},
@@ -472,7 +500,6 @@ DEFAULT_INVENTORY = [
     {"sku_key": "nescafe_classic", "sap_id": "SAP-10045450", "ean13": "7613033010125", "category": "Dairy & Breakfast", "name": "Nescafe Classic Jar 190g", "arabic_name": "قهوة نسكافيه كلاسيك 190 جم", "keywords": ["nescafe", "coffee", "classic", "نسكافيه", "قهوة"], "aisle": "Aisle C4", "price": 26.00, "erp_qty": 11, "physical_qty": 0, "reorder_pt": 5},
     {"sku_key": "kelloggs_cornflakes", "sap_id": "SAP-10045458", "ean13": "5053827100120", "category": "Dairy & Breakfast", "name": "Kelloggs Corn Flakes 500g", "arabic_name": "رقائق الذرة كيلوقز كورن فليكس 500 جم", "keywords": ["kellogg", "corn flakes", "cereal", "كيلوقز", "كورن فليكس"], "aisle": "Aisle C2", "price": 18.00, "erp_qty": 12, "physical_qty": 0, "reorder_pt": 6},
 
-    # Beverages & Water
     {"sku_key": "pepsi_can", "sap_id": "SAP-10045502", "ean13": "6281034000112", "category": "Beverages", "name": "Pepsi Cola Can 330ml", "arabic_name": "بيبسي كولا علبة 330 مل", "keywords": ["pepsi", "cola", "بيبسي", "كولا"], "aisle": "Aisle D4", "price": 2.50, "erp_qty": 24, "physical_qty": 0, "reorder_pt": 12},
     {"sku_key": "sevenup_can", "sap_id": "SAP-10045508", "ean13": "6281034000228", "category": "Beverages", "name": "7UP Lemon Lime Can 330ml", "arabic_name": "سفن أب علبة 330 مل", "keywords": ["7up", "seven up", "سفن اب", "سفن أب"], "aisle": "Aisle D4", "price": 2.50, "erp_qty": 20, "physical_qty": 0, "reorder_pt": 10},
     {"sku_key": "mirinda_can", "sap_id": "SAP-10045514", "ean13": "6281034000334", "category": "Beverages", "name": "Mirinda Citrus Can 330ml", "arabic_name": "ميرندا حمضيات علبة 330 مل", "keywords": ["mirinda", "citrus", "ميرندا", "حمضيات"], "aisle": "Aisle D4", "price": 2.50, "erp_qty": 18, "physical_qty": 0, "reorder_pt": 9},
@@ -481,33 +508,80 @@ DEFAULT_INVENTORY = [
     {"sku_key": "berain_water", "sap_id": "SAP-10045615", "ean13": "6281068000115", "category": "Beverages", "name": "Berain Bottled Water 330ml", "arabic_name": "مياه بيرين 330 مل", "keywords": ["berain", "water", "بيرين", "مياه"], "aisle": "Aisle D1", "price": 1.00, "erp_qty": 28, "physical_qty": 0, "reorder_pt": 14},
     {"sku_key": "almarai_juice", "sap_id": "SAP-10045622", "ean13": "6281007030115", "category": "Beverages", "name": "Almarai Mango Juice 1L", "arabic_name": "عصير المراعي مانجو 1 لتر", "keywords": ["juice", "mango", "almarai", "عصير", "مانجو", "المراعي"], "aisle": "Chiller C1", "price": 7.00, "erp_qty": 14, "physical_qty": 0, "reorder_pt": 7},
 
-    # Snacks, Biscuits & Chocolates
     {"sku_key": "lays_chips", "sap_id": "SAP-10045701", "ean13": "6281034011019", "category": "Snacks & Sweets", "name": "Lay's Salted Potato Chips 155g", "arabic_name": "بطاطس ليز بالملح 155 جم", "keywords": ["lays", "lay's", "chips", "ليز", "بطاطس", "شيبس"], "aisle": "Aisle E1", "price": 6.50, "erp_qty": 16, "physical_qty": 0, "reorder_pt": 8},
     {"sku_key": "pringles_original", "sap_id": "SAP-10045708", "ean13": "5053990101573", "category": "Snacks & Sweets", "name": "Pringles Original Can 165g", "arabic_name": "بطاطس برينجلز أصلي 165 جم", "keywords": ["pringles", "chips", "برينجلز", "بطاطس"], "aisle": "Aisle E1", "price": 11.00, "erp_qty": 12, "physical_qty": 0, "reorder_pt": 6},
     {"sku_key": "galaxy_chocolate", "sap_id": "SAP-10045715", "ean13": "6294003530112", "category": "Snacks & Sweets", "name": "Galaxy Smooth Milk Chocolate 80g", "arabic_name": "شوكولاتة جالكسي بالحليب 80 جم", "keywords": ["galaxy", "chocolate", "جالكسي", "شوكولاتة"], "aisle": "Aisle E2", "price": 6.50, "erp_qty": 20, "physical_qty": 0, "reorder_pt": 10},
     {"sku_key": "kitkat_4finger", "sap_id": "SAP-10045721", "ean13": "7613034626844", "category": "Snacks & Sweets", "name": "KitKat 4-Finger Chocolate 41.5g", "arabic_name": "شوكولاتة كيت كات 4 أصابع", "keywords": ["kitkat", "kit kat", "chocolate", "كيت كات", "شوكولاتة"], "aisle": "Aisle E2", "price": 3.50, "erp_qty": 25, "physical_qty": 0, "reorder_pt": 12},
     {"sku_key": "oreo_biscuits", "sap_id": "SAP-10045728", "ean13": "7622210449283", "category": "Snacks & Sweets", "name": "Oreo Original Sandwich Cookies 154g", "arabic_name": "بسكويت أوريو الأصلي 154 جم", "keywords": ["oreo", "biscuit", "cookies", "أوريو", "اوريو", "بسكويت"], "aisle": "Aisle E3", "price": 5.50, "erp_qty": 18, "physical_qty": 0, "reorder_pt": 9},
 
-    # Canned Foods
     {"sku_key": "goody_tuna", "sap_id": "SAP-10045801", "ean13": "6281011001011", "category": "Canned Foods", "name": "Goody Tenderina Tuna 185g", "arabic_name": "تونة قودي تندرينا 185 جم", "keywords": ["goody", "tuna", "tenderina", "قودي", "تونة"], "aisle": "Aisle A4", "price": 8.50, "erp_qty": 20, "physical_qty": 0, "reorder_pt": 10},
     {"sku_key": "luna_foul", "sap_id": "SAP-10045809", "ean13": "6281004002011", "category": "Canned Foods", "name": "Luna Foul Medames Plain 450g", "arabic_name": "فول مدمس لونا سادة 450 جم", "keywords": ["luna", "foul", "beans", "لونا", "فول"], "aisle": "Aisle A4", "price": 4.25, "erp_qty": 16, "physical_qty": 0, "reorder_pt": 8},
     {"sku_key": "al_alali_corn", "sap_id": "SAP-10045815", "ean13": "6281014005012", "category": "Canned Foods", "name": "Al Alali Whole Kernel Sweet Corn 340g", "arabic_name": "ذرة حلوة كاملة العلالي 340 جم", "keywords": ["sweet corn", "corn", "al alali", "ذرة", "العلالي"], "aisle": "Aisle A4", "price": 5.00, "erp_qty": 15, "physical_qty": 0, "reorder_pt": 7},
 
-    # Household & Cleaning
     {"sku_key": "dettol_antiseptic", "sap_id": "SAP-10045901", "ean13": "6291100120015", "category": "Household & Care", "name": "Dettol Antiseptic Disinfectant 500ml", "arabic_name": "مطهر ديتول الأصلي 500 مل", "keywords": ["dettol", "antiseptic", "disinfectant", "ديتول", "مطهر"], "aisle": "Aisle F1", "price": 21.00, "erp_qty": 12, "physical_qty": 0, "reorder_pt": 6},
     {"sku_key": "fairy_dishwash", "sap_id": "SAP-10045908", "ean13": "4084500123456", "category": "Household & Care", "name": "Fairy Lemon Dishwashing Liquid 800ml", "arabic_name": "سائل غسيل الصحون فيري ليمون 800 مل", "keywords": ["fairy", "dish", "lemon", "فيري", "صحون"], "aisle": "Aisle F1", "price": 13.50, "erp_qty": 14, "physical_qty": 0, "reorder_pt": 7},
     {"sku_key": "tide_detergent", "sap_id": "SAP-10045915", "ean13": "6281006040115", "category": "Household & Care", "name": "Tide Laundry Powder Detergent 2.5kg", "arabic_name": "مسحوق غسيل تايد 2.5 كجم", "keywords": ["tide", "detergent", "laundry", "تايد", "مسحوق غسيل"], "aisle": "Aisle F2", "price": 34.00, "erp_qty": 10, "physical_qty": 0, "reorder_pt": 5},
     {"sku_key": "fine_tissues", "sap_id": "SAP-10045922", "ean13": "6281029001012", "category": "Household & Care", "name": "Fine Fluffy Facial Tissues 150 Sheets", "arabic_name": "مناديل وجه فاين فلافي 150 منديل", "keywords": ["fine", "tissue", "tissues", "فاين", "مناديل"], "aisle": "Aisle F3", "price": 6.00, "erp_qty": 24, "physical_qty": 0, "reorder_pt": 12},
     {"sku_key": "sanita_bags", "sap_id": "SAP-10045929", "ean13": "6281012003018", "category": "Household & Care", "name": "Sanita Club Trash Bags 30 Gallon", "arabic_name": "أكياس نفايات سانيتا كلوب 30 جالون", "keywords": ["sanita", "trash bags", "garbage", "سانيتا", "أكياس"], "aisle": "Aisle F3", "price": 12.50, "erp_qty": 15, "physical_qty": 0, "reorder_pt": 7},
 
-    # Personal Care
     {"sku_key": "signal_toothpaste", "sap_id": "SAP-10045951", "ean13": "6281006070112", "category": "Personal Care", "name": "Signal Cavity Fighter Toothpaste 120ml", "arabic_name": "معجون أسنان سيجنال مكافح التسوس 120 مل", "keywords": ["signal", "toothpaste", "colgate", "سيجنال", "كولجيت", "معجون أسنان"], "aisle": "Aisle G1", "price": 8.00, "erp_qty": 18, "physical_qty": 0, "reorder_pt": 9},
     {"sku_key": "head_shoulders", "sap_id": "SAP-10045958", "ean13": "4084500987654", "category": "Personal Care", "name": "Head & Shoulders Menthol Shampoo 400ml", "arabic_name": "شامبو هيد آند شولدرز نعناع 400 مل", "keywords": ["head", "shoulders", "shampoo", "هيد اند شولدرز", "شامبو"], "aisle": "Aisle G2", "price": 22.00, "erp_qty": 12, "physical_qty": 0, "reorder_pt": 6},
     {"sku_key": "nivea_cream", "sap_id": "SAP-10045965", "ean13": "4005808123456", "category": "Personal Care", "name": "Nivea Soft Moisturizing Cream 200ml", "arabic_name": "كريم نيفيا سوفت المرطب 200 مل", "keywords": ["nivea", "cream", "soft", "نيفيا", "كريم"], "aisle": "Aisle G2", "price": 16.50, "erp_qty": 14, "physical_qty": 0, "reorder_pt": 7},
     {"sku_key": "lifebuoy_handwash", "sap_id": "SAP-10045972", "ean13": "6281006080111", "category": "Personal Care", "name": "Lifebuoy Total 10 Hand Wash 200ml", "arabic_name": "غسول اليدين لايفبوي 200 مل", "keywords": ["lifebuoy", "hand wash", "soap", "لايفبوي", "غسول", "صابون"], "aisle": "Aisle G1", "price": 9.50, "erp_qty": 16, "physical_qty": 0, "reorder_pt": 8},
 ]
 
-# --- SHARED MULTI-DEVICE SERVER STORE (INVENTORY + THEFT SECURITY ALERTS) ---
+DEFAULT_USERS = {
+    "Manager (Admin)": {
+        "role": "Manager",
+        "pin": "0000",
+        "assigned_zone": "All Store Zones",
+        "active": True,
+        "units_verified": 0,
+        "skus_touched": set(),
+        "scan_events": 0,
+        "last_active": "Online",
+    },
+    "Salman (Auditor 1)": {
+        "role": "Field Auditor",
+        "pin": "1111",
+        "assigned_zone": "Aisles A & B (Pantry)",
+        "active": True,
+        "units_verified": 0,
+        "skus_touched": set(),
+        "scan_events": 0,
+        "last_active": "Ready",
+    },
+    "Nasser (Auditor 2)": {
+        "role": "Field Auditor",
+        "pin": "2222",
+        "assigned_zone": "Chiller C & Beverages D",
+        "active": True,
+        "units_verified": 0,
+        "skus_touched": set(),
+        "scan_events": 0,
+        "last_active": "Ready",
+    },
+    "Mahdi (Auditor 3)": {
+        "role": "Field Auditor",
+        "pin": "3333",
+        "assigned_zone": "Snacks E & Care F/G",
+        "active": True,
+        "units_verified": 0,
+        "skus_touched": set(),
+        "scan_events": 0,
+        "last_active": "Ready",
+    },
+}
+
+def clone_default_users():
+    cloned = {}
+    for uname, info in DEFAULT_USERS.items():
+        c = info.copy()
+        c["skus_touched"] = set()
+        cloned[uname] = c
+    return cloned
+
+# --- SHARED MULTI-DEVICE SERVER STORE ---
 @st.cache_resource
 def get_shared_store_db():
     return {
@@ -515,10 +589,32 @@ def get_shared_store_db():
         "last_sync": "09:15 AM (SAP S/4HANA Connected)",
         "activity_log": [],
         "theft_alerts": [],
+        "users": clone_default_users(),
         "last_updated_ts": time.time(),
     }
 
 shared_db = get_shared_store_db()
+if "users" not in shared_db:
+    shared_db["users"] = clone_default_users()
+
+def record_user_work(username: str, sap_ids: List[str], units_counted: int):
+    if username not in shared_db["users"]:
+        shared_db["users"][username] = {
+            "role": "Field Auditor",
+            "pin": "1234",
+            "assigned_zone": "General Floor",
+            "active": True,
+            "units_verified": 0,
+            "skus_touched": set(),
+            "scan_events": 0,
+            "last_active": "Active",
+        }
+    u = shared_db["users"][username]
+    u["units_verified"] += max(0, int(units_counted))
+    for s in sap_ids:
+        u["skus_touched"].add(s)
+    u["scan_events"] += 1
+    u["last_active"] = datetime.now().strftime("%I:%M:%S %p")
 
 # --- STRUCTURED OUTPUT SCHEMAS ---
 class DetectedProduct(BaseModel):
@@ -542,6 +638,8 @@ class TheftBehaviorResult(BaseModel):
     recommended_action: str = Field(description="Immediate security guard or floor supervisor action")
 
 # --- SESSION STATE ---
+if "authenticated_user" not in st.session_state:
+    st.session_state.authenticated_user = None
 if "last_annotated_img" not in st.session_state:
     st.session_state.last_annotated_img = None
 if "last_barcode_hits" not in st.session_state:
@@ -566,10 +664,11 @@ with st.sidebar:
     active_gemini_key = user_api_key.strip() or secret_key or os.environ.get("GEMINI_API_KEY", "")
     st.caption(f"Active Model: **{st.session_state.active_model_used}**")
     st.caption(f"Shared Store DB: **{len(shared_db['inventory'])} SKUs**")
-    if st.button("🔄 Reset Store Audit & Theft Alerts", use_container_width=True):
+    if st.button("🔄 Reset Store Audit, Users & Alerts", use_container_width=True):
         shared_db["inventory"] = [item.copy() for item in DEFAULT_INVENTORY]
         shared_db["activity_log"] = []
         shared_db["theft_alerts"] = []
+        shared_db["users"] = clone_default_users()
         shared_db["last_updated_ts"] = time.time()
         st.session_state.last_annotated_img = None
         st.session_state.last_barcode_hits = []
@@ -736,7 +835,7 @@ def extract_video_keyframes(video_bytes: bytes, max_frames: int = 8) -> List[Ima
     return frames
 
 
-def update_shared_inventory(scan_result: ShelfScanResult, barcode_hits: list, accumulate: bool, source_label: str = "Field Mobile"):
+def update_shared_inventory(scan_result: ShelfScanResult, barcode_hits: list, accumulate: bool, source_label: str, active_user: str):
     detected_map = {}
     for det in scan_result.detections:
         detected_map[det.sku_key] = detected_map.get(det.sku_key, 0) + det.unit_count
@@ -747,18 +846,28 @@ def update_shared_inventory(scan_result: ShelfScanResult, barcode_hits: list, ac
             detected_map[k] = 1
 
     matched_items = []
+    touched_sap_ids = []
+    total_units_added = 0
+
     for item in shared_db["inventory"]:
         k = item["sku_key"]
         if k in detected_map:
+            qty_found = detected_map[k]
             if accumulate:
-                item["physical_qty"] += detected_map[k]
+                item["physical_qty"] += qty_found
             else:
-                item["physical_qty"] = detected_map[k]
+                item["physical_qty"] = qty_found
             matched_items.append(f"{item['name']} ({item['sap_id']}) → {item['physical_qty']} unit(s)")
+            touched_sap_ids.append(item["sap_id"])
+            total_units_added += qty_found
+
+    if touched_sap_ids:
+        record_user_work(active_user, touched_sap_ids, total_units_added)
 
     shared_db["last_updated_ts"] = time.time()
     shared_db["activity_log"].insert(0, {
         "timestamp": datetime.now().strftime("%H:%M:%S"),
+        "user": active_user,
         "source": source_label,
         "model": st.session_state.active_model_used,
         "summary": scan_result.raw_visible_text_summary,
@@ -768,11 +877,18 @@ def update_shared_inventory(scan_result: ShelfScanResult, barcode_hits: list, ac
     return matched_items
 
 
-# --- TOP BRAND HEADER WITH LOGO ---
+# --- TOP BRAND HEADER WITH LOGO & ACTIVE USER STATUS ---
 logo_html = (
     f'<img src="data:image/png;base64,{LOGO_B64}" class="brand-logo" alt="StockSense Logo" />'
     if LOGO_B64 else
     '<div style="font-size:2.2rem;">📦</div>'
+)
+
+current_user = st.session_state.authenticated_user
+user_pill_html = (
+    f'<div class="user-badge">👤 {current_user} ({shared_db["users"].get(current_user, {}).get("role", "User")})</div>'
+    if current_user else
+    '<div class="user-badge">🔒 Sign In Required</div>'
 )
 
 st.markdown(f"""
@@ -784,29 +900,85 @@ st.markdown(f"""
             <div class="brand-sub">SEE • TRACK • MANAGE • GROW — Real-Time Shelf & Loss-Prevention Intelligence</div>
         </div>
     </div>
-    <div class="status-pill">● Live Cloud Store Sync Active ({len(shared_db['inventory'])} SKUs)</div>
+    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+        {user_pill_html}
+        <div class="status-pill">● Live Cloud Store Sync Active</div>
+    </div>
 </div>
 """, unsafe_allow_html=True)
 
-# --- NAVIGATION TABS (SHOWING LIVE SECURITY ALERT COUNT ON TAB 3) ---
+# ==========================================
+# USER ACCESS GATE (MANAGER VS. AUTHORIZED FIELD AUDITOR)
+# ==========================================
+if current_user is None or current_user not in shared_db["users"] or not shared_db["users"][current_user]["active"]:
+    st.markdown('<div class="login-card">', unsafe_allow_html=True)
+    st.markdown("### 🔐 StockSense Store Access Portal")
+    st.caption("Managers grant mobile access to authorized field auditors. Select your assigned user account to begin.")
+
+    active_accounts = [u for u, meta in shared_db["users"].items() if meta["active"]]
+    selected_login_user = st.selectbox("Select Authorized User Account:", active_accounts)
+    user_meta = shared_db["users"][selected_login_user]
+
+    st.info(
+        f"**Role:** {user_meta['role']}  •  **Assigned Zone:** {user_meta['assigned_zone']}  \n"
+        f"*(Demo PIN for {selected_login_user}: **`{user_meta['pin']}`**)*"
+    )
+
+    entered_pin = st.text_input("Enter 4-Digit Access PIN:", value=user_meta["pin"], type="password", max_chars=8)
+
+    if st.button("🔓 Sign In & Launch Workspace", type="primary", use_container_width=True):
+        if entered_pin.strip() == user_meta["pin"]:
+            st.session_state.authenticated_user = selected_login_user
+            shared_db["users"][selected_login_user]["last_active"] = datetime.now().strftime("%I:%M %p")
+            st.rerun()
+        else:
+            st.error("Invalid PIN. Please enter the 4-digit PIN assigned by your Store Manager.")
+    st.markdown('</div>', unsafe_allow_html=True)
+    st.stop()
+
+# --- TOP SESSION BAR WITH SWITCH USER BUTTON ---
+active_role = shared_db["users"][current_user]["role"]
+active_zone = shared_db["users"][current_user]["assigned_zone"]
+
+bar_c1, bar_c2 = st.columns([4, 1])
+with bar_c1:
+    st.caption(f"Signed in as **{current_user}** • Role: **{active_role}** • Assigned Zone: **{active_zone}**")
+with bar_c2:
+    if st.button("🚪 Switch User / Log Out", use_container_width=True):
+        st.session_state.authenticated_user = None
+        st.rerun()
+
+# --- ROLE-BASED NAVIGATION TABS ---
 theft_count = len(shared_db["theft_alerts"])
 alerts_tab_label = f"📲 Automated Store Alerts (🚨 {theft_count})" if theft_count > 0 else "📲 Automated Store Alerts"
 
-tab1, tab2, tab3, tab4 = st.tabs([
-    "🎥 Live Field Auditor Scanner",
-    "📊 Manager Executive Dashboard (Live)",
-    alerts_tab_label,
-    "🛡️ Overhead CCTV Theft Detection",
-])
+if active_role == "Manager":
+    tab_scanner, tab_dashboard, tab_workforce, tab_alerts, tab_cctv = st.tabs([
+        "🎥 Live Field Auditor Scanner",
+        "📊 Manager Executive Dashboard (Live)",
+        "👥 Workforce & Auditor Efficiency",
+        alerts_tab_label,
+        "🛡️ Overhead CCTV Theft Detection",
+    ])
+else:
+    # Field Auditors get focused mobile scanning + live leaderboard check without admin controls
+    tab_scanner, tab_workforce = st.tabs([
+        "🎥 Live Field Auditor Scanner",
+        "👥 My Efficiency & Team Leaderboard",
+    ])
+    tab_dashboard = None
+    tab_alerts = None
+    tab_cctv = None
 
 # ==========================================
-# TAB 1: CONTINUOUS LIVE VIEWFINDER (TWO-WAY COMPONENT)
+# TAB 1: CONTINUOUS LIVE VIEWFINDER (USER-STAMPED)
 # ==========================================
-with tab1:
+with tab_scanner:
     col_cam, col_list = st.columns([1.1, 1], gap="large")
 
     with col_cam:
         st.subheader("1. Live Rear-Camera Shelf Scanner")
+        st.caption(f"All scans pushed from this device are credited to **{current_user}**.")
         audit_mode = st.radio(
             "Capture Mode:",
             [
@@ -819,7 +991,6 @@ with tab1:
 
         # --- MODE A: TRUE TWO-WAY LIVE VIEWFINDER ---
         if audit_mode == "🎥 Live Rear-Camera Auto-Scanner (Instant Push)":
-            st.caption("Point camera at products—once detected in the box below, tap the green or navy button to push straight to the Manager's laptop dashboard.")
             catalog_payload = [
                 {
                     "sku_key": i["sku_key"],
@@ -834,7 +1005,7 @@ with tab1:
             live_event = live_scanner_component(
                 api_key=active_gemini_key,
                 catalog=catalog_payload,
-                key="live_field_cam_light_v4",
+                key="live_field_cam_brand_v6",
             )
 
             if isinstance(live_event, dict) and live_event.get("event_id"):
@@ -846,6 +1017,9 @@ with tab1:
                     raw_items = live_event.get("items", [])
 
                     matched_updates = []
+                    touched_saps = []
+                    total_units_pushed = 0
+
                     for item in shared_db["inventory"]:
                         sap = item["sap_id"]
                         if sap in counts_map:
@@ -855,11 +1029,15 @@ with tab1:
                             else:
                                 item["physical_qty"] = qty_val
                             matched_updates.append(f"{item['name']} ({sap}) → {item['physical_qty']} unit(s)")
+                            touched_saps.append(sap)
+                            total_units_pushed += qty_val
 
                     if matched_updates:
+                        record_user_work(current_user, touched_saps, total_units_pushed)
                         shared_db["last_updated_ts"] = time.time()
                         shared_db["activity_log"].insert(0, {
                             "timestamp": datetime.now().strftime("%H:%M:%S"),
+                            "user": current_user,
                             "source": "Live Field Viewfinder",
                             "model": "gemini-3.5-flash-lite",
                             "summary": "Live continuous shelf push",
@@ -874,15 +1052,15 @@ with tab1:
                                 for x in raw_items
                             ],
                         })
-                        st.session_state.live_sync_feedback = "✅ Live Pushed to Manager Dashboard: " + " | ".join(matched_updates)
+                        st.session_state.live_sync_feedback = f"✅ Pushed by {current_user}: " + " | ".join(matched_updates)
                         st.rerun()
 
             if st.session_state.live_sync_feedback:
                 st.success(st.session_state.live_sync_feedback)
 
-        # --- MODE B: AISLE WALK-THROUGH VIDEO (100+ PRODUCTS) ---
+        # --- MODE B: AISLE WALK-THROUGH VIDEO ---
         elif audit_mode == "🎞️ Aisle Walk-Through Video (100+ Items)":
-            st.info("Record a 10–30 second walk-through video panning across an entire aisle (up to 100+ products). StockSense extracts key frames, deduplicates overlaps, and syncs all SKUs to the Manager Dashboard.")
+            st.info("Record a 10–30 second walk-through video panning across an entire aisle (up to 100+ products). StockSense extracts key frames, deduplicates overlaps, and credits all verified units to your user profile.")
             accumulate_vid = st.checkbox("➕ Add to existing verified counts", value=True, key="acc_vid")
             vid_file = st.file_uploader("Upload Aisle Walk-Through Video (.mp4, .mov)", type=["mp4", "mov", "avi"])
             if vid_file is not None:
@@ -903,9 +1081,9 @@ with tab1:
                                 st.session_state.last_annotated_img = first_ann
                                 st.session_state.last_barcode_hits = b_hits
                                 matched_list = update_shared_inventory(
-                                    scan_res, b_hits, accumulate=accumulate_vid, source_label="Aisle Video Audit"
+                                    scan_res, b_hits, accumulate=accumulate_vid, source_label="Aisle Video Audit", active_user=current_user
                                 )
-                                st.success(f"✅ Video synced! Updated {len(matched_list)} SKU(s) on Manager Dashboard.")
+                                st.success(f"✅ Video synced by {current_user}! Updated {len(matched_list)} SKU(s).")
                                 st.rerun()
                         except Exception as e:
                             st.error(f"Video audit error: {e}")
@@ -933,9 +1111,9 @@ with tab1:
                             st.session_state.last_annotated_img = first_ann
                             st.session_state.last_barcode_hits = b_hits
                             matched_list = update_shared_inventory(
-                                scan_res, b_hits, accumulate=accumulate_batch, source_label="Batch Photo Upload"
+                                scan_res, b_hits, accumulate=accumulate_batch, source_label="Batch Photo Upload", active_user=current_user
                             )
-                            st.success(f"✅ Batch synced ({len(matched_list)} SKU(s) updated on Manager Dashboard)!")
+                            st.success(f"✅ Batch synced by {current_user} ({len(matched_list)} SKU(s) updated)!")
                             st.rerun()
                         except Exception as e:
                             st.error(f"Scan error: {e}")
@@ -944,14 +1122,14 @@ with tab1:
         if shared_db["activity_log"]:
             st.markdown("#### 🧠 Latest Field Scan Feed")
             latest = shared_db["activity_log"][0]
-            st.caption(f"{latest['timestamp']} • {latest['source']} (`{latest['model']}`)")
+            st.caption(f"{latest['timestamp']} • 👤 **{latest.get('user', 'Auditor')}** • {latest['source']}")
             for det in latest["items"]:
                 st.markdown(f"""
                 <div class="feed-item">
                     <span class="sap-badge">{det['sap_id']}</span>
                     <strong style="color:#0B2C5F;">{det['product_name']}</strong>
                     <span style="color:#047857; font-weight:700; float:right;">{det['unit_count']} unit(s)</span><br/>
-                    <span style="color:#475569;">Read Text: <em>"{det['extracted_text_ar_en']}"</em></span>
+                    <span style="color:#334155;">Read Text: <em>"{det['extracted_text_ar_en']}"</em></span>
                 </div>
                 """, unsafe_allow_html=True)
 
@@ -986,7 +1164,7 @@ with tab1:
                 )
             with c_erp:
                 st.markdown(
-                    f"<span style='color:#64748B; font-size:0.76rem;'>SAP</span><br/>"
+                    f"<span style='color:#475569; font-size:0.76rem;'>SAP</span><br/>"
                     f"<strong style='color:#0B2C5F;'>{item['erp_qty']}</strong>",
                     unsafe_allow_html=True,
                 )
@@ -999,369 +1177,443 @@ with tab1:
                     key=f"qty_{idx}_{int(shared_db['last_updated_ts']*100)}",
                 )
                 if new_val != item["physical_qty"]:
+                    diff = max(0, new_val - item["physical_qty"])
                     shared_db["inventory"][idx]["physical_qty"] = new_val
                     shared_db["last_updated_ts"] = time.time()
+                    if diff > 0:
+                        record_user_work(current_user, [item["sap_id"]], diff)
             st.divider()
 
         if shown_count == 0:
-            st.info("No items verified yet. Point the live camera at a product and tap the green or navy button—it will appear here and on the Manager's laptop immediately!")
+            st.info("No items verified yet. Point the live camera at a product and tap the green or navy button—it will appear here and credit your user efficiency score!")
 
         if st.button("✅ Finalize & Post Audit to SAP S/4HANA", type="primary", use_container_width=True):
-            shared_db["last_sync"] = datetime.now().strftime("%I:%M %p (Posted to SAP S/4HANA)")
+            shared_db["last_sync"] = datetime.now().strftime(f"%I:%M %p (Posted by {current_user})")
             st.balloons()
-            st.success("Audit posted to SAP S/4HANA!")
+            st.success(f"Audit posted to SAP S/4HANA by {current_user}!")
 
 # ==========================================
-# TAB 2: AUTO-REFRESHING MANAGER EXECUTIVE DASHBOARD
+# TAB 2: MANAGER EXECUTIVE DASHBOARD
 # ==========================================
-with tab2:
-    @st.fragment(run_every=4)
-    def render_live_manager_dashboard():
-        df = pd.DataFrame(shared_db["inventory"])
-        df["variance"] = df["physical_qty"] - df["erp_qty"]
-        df["abs_variance"] = df["variance"].abs()
-        df["rev_at_risk"] = df.apply(lambda r: abs(r["variance"]) * r["price"] if r["variance"] < 0 else 0.0, axis=1)
-        df["status"] = df.apply(
-            lambda r: "🔴 Stockout" if r["physical_qty"] == 0 else ("🟠 Low Stock" if r["physical_qty"] <= r["reorder_pt"] else "🟢 Optimal"),
-            axis=1,
-        )
+if tab_dashboard is not None:
+    with tab_dashboard:
+        @st.fragment(run_every=4)
+        def render_live_manager_dashboard():
+            df = pd.DataFrame(shared_db["inventory"])
+            df["variance"] = df["physical_qty"] - df["erp_qty"]
+            df["abs_variance"] = df["variance"].abs()
+            df["rev_at_risk"] = df.apply(lambda r: abs(r["variance"]) * r["price"] if r["variance"] < 0 else 0.0, axis=1)
+            df["status"] = df.apply(
+                lambda r: "🔴 Stockout" if r["physical_qty"] == 0 else ("🟠 Low Stock" if r["physical_qty"] <= r["reorder_pt"] else "🟢 Optimal"),
+                axis=1,
+            )
 
-        total_skus = len(df)
-        audited_skus = len(df[df["physical_qty"] > 0])
-        progress_pct = audited_skus / total_skus if total_skus > 0 else 0.0
-        total_erp = int(df["erp_qty"].sum())
-        total_phys = int(df["physical_qty"].sum())
-        accuracy = round((min(total_phys, total_erp) / total_erp) * 100, 1) if total_erp > 0 else 100.0
-        rev_risk = df["rev_at_risk"].sum()
-        alerts_count = len(df[df["physical_qty"] <= df["reorder_pt"]])
+            total_skus = len(df)
+            audited_skus = len(df[df["physical_qty"] > 0])
+            progress_pct = audited_skus / total_skus if total_skus > 0 else 0.0
+            total_erp = int(df["erp_qty"].sum())
+            total_phys = int(df["physical_qty"].sum())
+            accuracy = round((min(total_phys, total_erp) / total_erp) * 100, 1) if total_erp > 0 else 100.0
+            rev_risk = df["rev_at_risk"].sum()
+            alerts_count = len(df[df["physical_qty"] <= df["reorder_pt"]])
 
-        # Live Progress Bar Header
-        st.markdown(f"### 📡 Live Store Audit Progress: **{audited_skus} / {total_skus} SKUs Verified** ({progress_pct*100:.0f}%)")
-        st.progress(progress_pct)
-        st.caption(f"Auto-syncing live from field auditors • Last SAP status: {shared_db['last_sync']}")
+            st.markdown(f"### 📡 Live Store Audit Progress: **{audited_skus} / {total_skus} SKUs Verified** ({progress_pct*100:.0f}%)")
+            st.progress(progress_pct)
+            st.caption(f"Auto-syncing live from field auditors • Last SAP status: {shared_db['last_sync']}")
 
-        k1, k2, k3, k4 = st.columns(4)
-        k1.metric("Field Audit Progress", f"{audited_skus} / {total_skus} SKUs", f"{total_phys} physical units counted")
-        k2.metric("Inventory Accuracy", f"{accuracy}%", f"{total_phys - total_erp:+d} units vs SAP")
-        k3.metric("Revenue at Risk", f"SAR {rev_risk:,.2f}", "Phantom stock exposure", delta_color="inverse")
-        k4.metric("Active Alerts", f"{alerts_count} Stock | {len(shared_db['theft_alerts'])} Security", "SAP PO & CCTV triggers")
+            k1, k2, k3, k4 = st.columns(4)
+            k1.metric("Field Audit Progress", f"{audited_skus} / {total_skus} SKUs", f"{total_phys} physical units counted")
+            k2.metric("Inventory Accuracy", f"{accuracy}%", f"{total_phys - total_erp:+d} units vs SAP")
+            k3.metric("Revenue at Risk", f"SAR {rev_risk:,.2f}", "Phantom stock exposure", delta_color="inverse")
+            k4.metric("Active Alerts", f"{alerts_count} Stock | {len(shared_db['theft_alerts'])} Security", "SAP PO & CCTV triggers")
 
-        # Live Field Activity Stream
-        if shared_db["activity_log"]:
-            with st.expander(f"📲 Live Field Auditor Feed ({len(shared_db['activity_log'])} scans received)", expanded=True):
-                for log in shared_db["activity_log"][:5]:
-                    matched_txt = ", ".join(log["matched"]) if log["matched"] else "Unmapped catalog item"
-                    st.markdown(
-                        f"<div class='feed-item'><strong>[{log['timestamp']}] {log['source']}:</strong> {matched_txt}</div>",
-                        unsafe_allow_html=True,
-                    )
+            if shared_db["activity_log"]:
+                with st.expander(f"📲 Live Field Auditor Feed ({len(shared_db['activity_log'])} scans received)", expanded=True):
+                    for log in shared_db["activity_log"][:5]:
+                        matched_txt = ", ".join(log["matched"]) if log["matched"] else "Unmapped catalog item"
+                        who = log.get("user", "Field Auditor")
+                        st.markdown(
+                            f"<div class='feed-item'><strong>[{log['timestamp']}] 👤 {who} ({log['source']}):</strong> {matched_txt}</div>",
+                            unsafe_allow_html=True,
+                        )
 
-        st.write("")
+            st.write("")
 
-        # 1. TOP 5 HORIZONTAL BAR CHARTS FIRST (BRAND NAVY & EMERALD/BLUE PALETTE)
-        col_chart1, col_chart2 = st.columns(2, gap="large")
+            col_chart1, col_chart2 = st.columns(2, gap="large")
 
-        with col_chart1:
-            st.markdown('<div class="chart-card">', unsafe_allow_html=True)
-            st.markdown("#### 📊 Top 5 SKUs by Unit Variance (SAP vs. Vision)")
-            st.caption("Highlights the 5 products with the largest physical-to-ERP gap.")
-            top5_var_df = df.sort_values(by="abs_variance", ascending=False).head(5).copy()
-            top5_var_df["Short Label"] = top5_var_df["name"].apply(lambda x: x[:28] + "…" if len(x) > 29 else x)
-            chart1_data = top5_var_df.set_index("Short Label")[["erp_qty", "physical_qty"]]
-            chart1_data.columns = ["SAP Book Qty", "AI Verified Qty"]
-            st.bar_chart(chart1_data, color=["#0B2C5F", "#00A86B"], horizontal=True, height=285)
-            st.markdown('</div>', unsafe_allow_html=True)
+            with col_chart1:
+                st.markdown('<div class="chart-card">', unsafe_allow_html=True)
+                st.markdown("#### 📊 Top 5 SKUs by Unit Variance (SAP vs. Vision)")
+                st.caption("Highlights the 5 products with the largest physical-to-ERP gap.")
+                top5_var_df = df.sort_values(by="abs_variance", ascending=False).head(5).copy()
+                top5_var_df["Short Label"] = top5_var_df["name"].apply(lambda x: x[:28] + "…" if len(x) > 29 else x)
+                chart1_data = top5_var_df.set_index("Short Label")[["erp_qty", "physical_qty"]]
+                chart1_data.columns = ["SAP Book Qty", "AI Verified Qty"]
+                st.bar_chart(chart1_data, color=["#0B2C5F", "#00A86B"], horizontal=True, height=285)
+                st.markdown('</div>', unsafe_allow_html=True)
 
-        with col_chart2:
-            st.markdown('<div class="chart-card">', unsafe_allow_html=True)
-            st.markdown("#### 💸 Top 5 SKUs by Revenue at Risk (SAR)")
-            st.caption("Prioritizes shelf replenishment by highest financial exposure.")
-            top5_risk_df = df[df["rev_at_risk"] > 0].sort_values(by="rev_at_risk", ascending=False).head(5).copy()
-            if not top5_risk_df.empty:
-                top5_risk_df["Short Label"] = top5_risk_df["name"].apply(lambda x: x[:28] + "…" if len(x) > 29 else x)
-                chart2_data = top5_risk_df.set_index("Short Label")[["rev_at_risk"]]
-                chart2_data.columns = ["Revenue at Risk (SAR)"]
-                st.bar_chart(chart2_data, color="#0072CE", horizontal=True, height=285)
-            else:
-                st.success("Zero phantom stock revenue leakage across all SKUs!")
-            st.markdown('</div>', unsafe_allow_html=True)
-
-        st.write("")
-
-        # 2. FULL SCROLLABLE SAP INVENTORY LEDGER BELOW CHARTS
-        st.subheader(f"Live Store Inventory & SAP Discrepancy Ledger ({len(df)} SKUs)")
-
-        f_col1, f_col2, f_col3 = st.columns([1.2, 1.2, 1.6])
-        with f_col1:
-            cat_list = ["All Categories"] + sorted(df["category"].unique().tolist())
-            sel_cat = st.selectbox("Filter by Category", cat_list, key="mgr_cat")
-        with f_col2:
-            status_list = ["All Statuses", "Audited (> 0 Verified)", "🔴 Stockout", "🟠 Low Stock", "🟢 Optimal"]
-            sel_status = st.selectbox("Filter by Stock Status", status_list, key="mgr_status")
-        with f_col3:
-            tbl_search = st.text_input("Search SAP Material ID, Product (EN/AR), or Barcode", placeholder="Type to filter full SAP ledger...", key="mgr_search")
-
-        filtered_df = df.copy()
-        if sel_cat != "All Categories":
-            filtered_df = filtered_df[filtered_df["category"] == sel_cat]
-        if sel_status == "Audited (> 0 Verified)":
-            filtered_df = filtered_df[filtered_df["physical_qty"] > 0]
-        elif sel_status != "All Statuses":
-            filtered_df = filtered_df[filtered_df["status"] == sel_status]
-        if tbl_search.strip():
-            q = tbl_search.strip().lower()
-            filtered_df = filtered_df[
-                filtered_df["sap_id"].str.lower().str.contains(q)
-                | filtered_df["name"].str.lower().str.contains(q)
-                | filtered_df["arabic_name"].str.lower().str.contains(q)
-                | filtered_df["ean13"].str.lower().str.contains(q)
-            ]
-
-        display_df = filtered_df[[
-            "sap_id", "ean13", "category", "name", "arabic_name", "aisle",
-            "erp_qty", "physical_qty", "variance", "rev_at_risk", "status"
-        ]].copy()
-        display_df.columns = [
-            "SAP Material ID",
-            "EAN-13 Barcode",
-            "Category",
-            "Product (EN)",
-            "Product (AR)",
-            "Location",
-            "SAP Qty",
-            "Verified Qty",
-            "Variance",
-            "Rev. at Risk (SAR)",
-            "Status",
-        ]
-        st.dataframe(display_df, use_container_width=True, hide_index=True, height=620)
-
-    render_live_manager_dashboard()
-
-    # Enterprise SAP ERP Connector Expander
-    with st.expander("🔌 Enterprise SAP S/4HANA Material Master Connector (MARA / MARD Feed)"):
-        st.caption("Upload a customer SAP CSV export to replace the store catalog across all connected field phones and dashboards.")
-        sap_csv = st.file_uploader("Upload Custom SAP Material Master (.csv)", type=["csv"])
-        if sap_csv is not None:
-            try:
-                custom_df = pd.read_csv(sap_csv)
-                required_cols = {"sap_id", "name", "erp_qty", "price"}
-                if required_cols.issubset(set(custom_df.columns)):
-                    new_inv = []
-                    for idx_r, r in custom_df.iterrows():
-                        new_inv.append({
-                            "sku_key": f"custom_{idx_r}",
-                            "sap_id": str(r["sap_id"]),
-                            "ean13": str(r.get("ean13", "6281000000000")),
-                            "category": str(r.get("category", "SAP Import")),
-                            "name": str(r["name"]),
-                            "arabic_name": str(r.get("arabic_name", r["name"])),
-                            "keywords": [w.lower() for w in str(r["name"]).split()],
-                            "aisle": str(r.get("aisle", "Aisle A1")),
-                            "price": float(r["price"]),
-                            "erp_qty": int(r["erp_qty"]),
-                            "physical_qty": int(r.get("physical_qty", 0)),
-                            "reorder_pt": int(r.get("reorder_pt", max(1, int(r["erp_qty"]) // 2))),
-                        })
-                    shared_db["inventory"] = new_inv
-                    shared_db["last_updated_ts"] = time.time()
-                    st.success(f"Loaded {len(new_inv)} SKUs from SAP CSV across all devices!")
-                    st.rerun()
+            with col_chart2:
+                st.markdown('<div class="chart-card">', unsafe_allow_html=True)
+                st.markdown("#### 💸 Top 5 SKUs by Revenue at Risk (SAR)")
+                st.caption("Prioritizes shelf replenishment by highest financial exposure.")
+                top5_risk_df = df[df["rev_at_risk"] > 0].sort_values(by="rev_at_risk", ascending=False).head(5).copy()
+                if not top5_risk_df.empty:
+                    top5_risk_df["Short Label"] = top5_risk_df["name"].apply(lambda x: x[:28] + "…" if len(x) > 29 else x)
+                    chart2_data = top5_risk_df.set_index("Short Label")[["rev_at_risk"]]
+                    chart2_data.columns = ["Revenue at Risk (SAR)"]
+                    st.bar_chart(chart2_data, color="#0072CE", horizontal=True, height=285)
                 else:
-                    st.error(f"CSV must contain columns: {required_cols}")
-            except Exception as ex:
-                st.error(f"Could not parse SAP CSV: {ex}")
+                    st.success("Zero phantom stock revenue leakage across all SKUs!")
+                st.markdown('</div>', unsafe_allow_html=True)
+
+            st.write("")
+
+            st.subheader(f"Live Store Inventory & SAP Discrepancy Ledger ({len(df)} SKUs)")
+
+            f_col1, f_col2, f_col3 = st.columns([1.2, 1.2, 1.6])
+            with f_col1:
+                cat_list = ["All Categories"] + sorted(df["category"].unique().tolist())
+                sel_cat = st.selectbox("Filter by Category", cat_list, key="mgr_cat")
+            with f_col2:
+                status_list = ["All Statuses", "Audited (> 0 Verified)", "🔴 Stockout", "🟠 Low Stock", "🟢 Optimal"]
+                sel_status = st.selectbox("Filter by Stock Status", status_list, key="mgr_status")
+            with f_col3:
+                tbl_search = st.text_input("Search SAP Material ID, Product (EN/AR), or Barcode", placeholder="Type to filter full SAP ledger...", key="mgr_search")
+
+            filtered_df = df.copy()
+            if sel_cat != "All Categories":
+                filtered_df = filtered_df[filtered_df["category"] == sel_cat]
+            if sel_status == "Audited (> 0 Verified)":
+                filtered_df = filtered_df[filtered_df["physical_qty"] > 0]
+            elif sel_status != "All Statuses":
+                filtered_df = filtered_df[filtered_df["status"] == sel_status]
+            if tbl_search.strip():
+                q = tbl_search.strip().lower()
+                filtered_df = filtered_df[
+                    filtered_df["sap_id"].str.lower().str.contains(q)
+                    | filtered_df["name"].str.lower().str.contains(q)
+                    | filtered_df["arabic_name"].str.lower().str.contains(q)
+                    | filtered_df["ean13"].str.lower().str.contains(q)
+                ]
+
+            display_df = filtered_df[[
+                "sap_id", "ean13", "category", "name", "arabic_name", "aisle",
+                "erp_qty", "physical_qty", "variance", "rev_at_risk", "status"
+            ]].copy()
+            display_df.columns = [
+                "SAP Material ID",
+                "EAN-13 Barcode",
+                "Category",
+                "Product (EN)",
+                "Product (AR)",
+                "Location",
+                "SAP Qty",
+                "Verified Qty",
+                "Variance",
+                "Rev. at Risk (SAR)",
+                "Status",
+            ]
+            st.dataframe(display_df, use_container_width=True, hide_index=True, height=620)
+
+        render_live_manager_dashboard()
 
 # ==========================================
-# TAB 3: AUTOMATED STORE ALERTS (SECURITY THEFT ALERTS + SAP REPLENISHMENT)
+# NEW TAB: WORKFORCE & AUDITOR EFFICIENCY + ACCESS MANAGEMENT
 # ==========================================
-with tab3:
+with tab_workforce:
     @st.fragment(run_every=4)
-    def render_automated_alerts():
-        # --- SECTION A: HIGH-PRIORITY CCTV THEFT BEHAVIORAL ALERTS ---
-        st.subheader("🚨 Loss-Prevention & Behavioral Theft Alerts (Overhead CCTV)")
-        if not shared_db["theft_alerts"]:
-            st.info("No suspicious theft behavior detected by overhead aisle CCTV cameras. Run a feed or test clip in Tab 4 ('Overhead CCTV Theft Detection') to trigger live security alerts here.")
-        else:
-            for t_idx, alert in enumerate(shared_db["theft_alerts"]):
-                st.markdown(f"""
-                <div style="background-color:#FEF2F2; border:1px solid #FECACA; border-left:5px solid #DC2626; padding:16px; border-radius:10px; margin-bottom:12px; box-shadow: 0 2px 8px rgba(220,38,38,0.08);">
-                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
-                        <span style="color:#B91C1C; font-weight:800; font-size:0.88rem;">
-                            🚨 PRIORITY SECURITY ALERT • {alert['camera_id']} • {alert['aisle']}
-                        </span>
-                        <span style="background:#DC2626; color:#FFFFFF; padding:3px 10px; border-radius:999px; font-size:0.76rem; font-weight:700;">
-                            🕒 {alert['timestamp']} • Confidence: {alert['confidence_pct']}%
-                        </span>
+    def render_workforce_efficiency():
+        st.subheader("👥 Workforce Productivity & Mobile Auditor Access Control")
+        st.caption("Tracks how many physical units and unique SKUs each authorized user has verified in real time.")
+
+        # Build Auditor Efficiency Dataframe
+        rows = []
+        total_team_units = sum(u["units_verified"] for u in shared_db["users"].values())
+
+        for uname, udata in shared_db["users"].items():
+            skus_count = len(udata["skus_touched"])
+            units_count = udata["units_verified"]
+            share_pct = round((units_count / total_team_units) * 100, 1) if total_team_units > 0 else 0.0
+            rows.append({
+                "User Account": uname,
+                "Role": udata["role"],
+                "Assigned Zone": udata["assigned_zone"],
+                "Mobile Access": "🟢 Authorized" if udata["active"] else "🔴 Revoked",
+                "Units Verified": units_count,
+                "Unique SKUs Audited": skus_count,
+                "Scan Push Events": udata["scan_events"],
+                "Team Contribution (%)": share_pct,
+                "Last Active": udata["last_active"],
+            })
+
+        eff_df = pd.DataFrame(rows).sort_values(by="Units Verified", ascending=False)
+
+        # Top Workforce KPIs
+        top_performer = eff_df.iloc[0]["User Account"] if not eff_df.empty and eff_df.iloc[0]["Units Verified"] > 0 else "Awaiting Scans"
+        active_auditors_cnt = len([u for u in shared_db["users"].values() if u["active"] and u["role"] == "Field Auditor"])
+
+        w1, w2, w3 = st.columns(3)
+        w1.metric("Authorized Field Auditors", f"{active_auditors_cnt} Active", "Mobile scanner enabled")
+        w2.metric("Total Team Units Verified", f"{total_team_units} Units", "Across all active sessions")
+        w3.metric("Top Auditor (By Volume)", top_performer, "Highest verified count")
+
+        st.write("")
+
+        col_eff_chart, col_eff_admin = st.columns([1.25, 1], gap="large")
+
+        with col_eff_chart:
+            st.markdown('<div class="chart-card">', unsafe_allow_html=True)
+            st.markdown("#### 📈 Verified Units by Auditor (Efficiency Comparison)")
+            st.caption("Live comparison of physical shelf items verified per user.")
+            chart_eff = eff_df.set_index("User Account")[["Units Verified", "Unique SKUs Audited"]]
+            st.bar_chart(chart_eff, color=["#00A86B", "#0072CE"], horizontal=True, height=280)
+            st.markdown('</div>', unsafe_allow_html=True)
+
+            st.markdown("#### 📋 Detailed Auditor Performance Ledger")
+            st.dataframe(eff_df, use_container_width=True, hide_index=True)
+
+        with col_eff_admin:
+            if active_role == "Manager":
+                st.markdown('<div class="cctv-panel">', unsafe_allow_html=True)
+                st.markdown("#### 🔑 Grant Mobile Access to New Auditor")
+                st.caption("Provision a new mobile user account and PIN so they can log in from their smartphone.")
+
+                new_name = st.text_input("Auditor Name / Label:", placeholder="e.g. Mohammed (Auditor 4)")
+                new_zone = st.text_input("Assigned Store Aisle / Zone:", placeholder="e.g. Aisle D (Beverages)")
+                new_pin = st.text_input("Assign 4-Digit PIN:", value="4444", max_chars=8)
+
+                if st.button("➕ Grant Mobile Scanner Access", type="primary", use_container_width=True):
+                    clean_name = new_name.strip()
+                    if not clean_name:
+                        st.warning("Enter an auditor name first.")
+                    elif clean_name in shared_db["users"]:
+                        st.warning("That user already exists.")
+                    else:
+                        shared_db["users"][clean_name] = {
+                            "role": "Field Auditor",
+                            "pin": new_pin.strip() or "4444",
+                            "assigned_zone": new_zone.strip() or "General Floor",
+                            "active": True,
+                            "units_verified": 0,
+                            "skus_touched": set(),
+                            "scan_events": 0,
+                            "last_active": "Provisioned",
+                        }
+                        st.success(f"✅ Mobile access granted to **{clean_name}** (PIN: `{new_pin.strip() or '4444'}`)!")
+                        st.rerun()
+
+                st.markdown("---")
+                st.markdown("#### 🛡️ Manage Existing User Permissions")
+                manageable_users = [u for u in shared_db["users"].keys() if u != "Manager (Admin)"]
+                target_u = st.selectbox("Select Auditor Account:", manageable_users, key="manage_u_sel")
+                is_currently_active = shared_db["users"][target_u]["active"]
+
+                if is_currently_active:
+                    if st.button(f"🚫 Suspend Mobile Access for {target_u}", use_container_width=True):
+                        shared_db["users"][target_u]["active"] = False
+                        st.warning(f"Suspended mobile access for {target_u}.")
+                        st.rerun()
+                else:
+                    if st.button(f"✅ Re-Enable Mobile Access for {target_u}", use_container_width=True):
+                        shared_db["users"][target_u]["active"] = True
+                        st.success(f"Re-enabled mobile access for {target_u}.")
+                        st.rerun()
+
+                st.markdown('</div>', unsafe_allow_html=True)
+            else:
+                st.info("Log in as **Manager (Admin)** (PIN: `0000`) to provision new mobile auditor accounts or suspend access.")
+
+    render_workforce_efficiency()
+
+# ==========================================
+# TAB 3: AUTOMATED STORE ALERTS
+# ==========================================
+if tab_alerts is not None:
+    with tab_alerts:
+        @st.fragment(run_every=4)
+        def render_automated_alerts():
+            st.subheader("🚨 Loss-Prevention & Behavioral Theft Alerts (Overhead CCTV)")
+            if not shared_db["theft_alerts"]:
+                st.info("No suspicious theft behavior detected by overhead aisle CCTV cameras. Run a feed or test clip in Tab 5 ('Overhead CCTV Theft Detection') to trigger live security alerts here.")
+            else:
+                for alert in shared_db["theft_alerts"]:
+                    st.markdown(f"""
+                    <div style="background-color:#FEF2F2; border:1px solid #FECACA; border-left:5px solid #DC2626; padding:16px; border-radius:10px; margin-bottom:12px; box-shadow: 0 2px 8px rgba(220,38,38,0.08);">
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
+                            <span style="color:#B91C1C; font-weight:800; font-size:0.88rem;">
+                                🚨 PRIORITY SECURITY ALERT • {alert['camera_id']} • {alert['aisle']}
+                            </span>
+                            <span style="background:#DC2626; color:#FFFFFF; padding:3px 10px; border-radius:999px; font-size:0.76rem; font-weight:700;">
+                                🕒 {alert['timestamp']} • Confidence: {alert['confidence_pct']}%
+                            </span>
+                        </div>
+                        <div style="color:#1E293B; margin-top:8px; font-size:0.94rem; line-height:1.5;">
+                            <strong>Detected Behavior:</strong> {alert['behavior_type']}<br/>
+                            <strong>AI CCTV Observation:</strong> {alert['description']}<br/>
+                            <strong>Recommended Action:</strong> <span style="color:#991B1B; font-weight:600;">{alert['recommended_action']}</span>
+                        </div>
                     </div>
-                    <div style="color:#1E293B; margin-top:8px; font-size:0.94rem; line-height:1.5;">
-                        <strong>Detected Behavior:</strong> {alert['behavior_type']}<br/>
-                        <strong>AI CCTV Observation:</strong> {alert['description']}<br/>
-                        <strong>Recommended Action:</strong> <span style="color:#991B1B; font-weight:600;">{alert['recommended_action']}</span>
+                    """, unsafe_allow_html=True)
+
+                if st.button("🧹 Acknowledge & Clear Security Alerts", key="clear_theft_btn"):
+                    shared_db["theft_alerts"] = []
+                    st.rerun()
+
+            st.markdown("---")
+
+            st.subheader("📦 Automated SAP Shelf Replenishment Alerts")
+            df_alerts = pd.DataFrame(shared_db["inventory"])
+            df_alerts["variance"] = df_alerts["physical_qty"] - df_alerts["erp_qty"]
+            df_alerts["rev_at_risk"] = df_alerts.apply(lambda r: abs(r["variance"]) * r["price"] if r["variance"] < 0 else 0.0, axis=1)
+            alert_items = df_alerts[df_alerts["physical_qty"] <= df_alerts["reorder_pt"]].sort_values(by="rev_at_risk", ascending=False)
+
+            if alert_items.empty:
+                st.success("✅ All shelves are stocked above SAP reorder points.")
+            else:
+                st.caption(f"Showing top priority replenishment triggers ({len(alert_items)} SKUs below SAP safety stock):")
+                for _, row in alert_items.head(15).iterrows():
+                    st.markdown(f"""
+                    <div style="background: linear-gradient(90deg, #FFFFFF 0%, #F2FBF7 100%); border:1px solid #BCE3D1; border-left:5px solid #00A86B; padding:15px; border-radius:10px; margin-bottom:12px; box-shadow: 0 2px 6px rgba(11,44,95,0.05);">
+                        <div style="color:#047857; font-weight:800; font-size:0.84rem;">💬 WHATSAPP BUSINESS ALERT • STORE #104 • {row['category'].upper()}</div>
+                        <div style="color:#1E293B; margin-top:6px; font-size:0.93rem; line-height:1.5;">
+                            <strong style="color:#0B2C5F;">⚠️ SHELF REPLENISHMENT REQUIRED ({row['sap_id']}):</strong><br/>
+                            • <strong>Product:</strong> {row['name']} ({row['arabic_name']})<br/>
+                            • <strong>Barcode / Location:</strong> {row['ean13']} • {row['aisle']}<br/>
+                            • <strong>Verified Shelf Qty:</strong> {row['physical_qty']} units (SAP Book: {row['erp_qty']} | Variance: {row['variance']:+d} | Risk: SAR {row['rev_at_risk']:,.2f})<br/>
+                            • <strong>Action:</strong> Pull 1 case from Backroom Bay B or approve draft SAP Purchase Order.
+                        </div>
                     </div>
-                </div>
-                """, unsafe_allow_html=True)
+                    """, unsafe_allow_html=True)
 
-            if st.button("🧹 Acknowledge & Clear Security Alerts", key="clear_theft_btn"):
-                shared_db["theft_alerts"] = []
-                st.rerun()
-
-        st.markdown("---")
-
-        # --- SECTION B: SAP SHELF REPLENISHMENT ALERTS ---
-        st.subheader("📦 Automated SAP Shelf Replenishment Alerts")
-        df_alerts = pd.DataFrame(shared_db["inventory"])
-        df_alerts["variance"] = df_alerts["physical_qty"] - df_alerts["erp_qty"]
-        df_alerts["rev_at_risk"] = df_alerts.apply(lambda r: abs(r["variance"]) * r["price"] if r["variance"] < 0 else 0.0, axis=1)
-        alert_items = df_alerts[df_alerts["physical_qty"] <= df_alerts["reorder_pt"]].sort_values(by="rev_at_risk", ascending=False)
-
-        if alert_items.empty:
-            st.success("✅ All shelves are stocked above SAP reorder points.")
-        else:
-            st.caption(f"Showing top priority replenishment triggers ({len(alert_items)} SKUs below SAP safety stock):")
-            for _, row in alert_items.head(15).iterrows():
-                st.markdown(f"""
-                <div style="background-color:#FFFFFF; border:1px solid #D8E2EE; border-left:5px solid #00A86B; padding:15px; border-radius:10px; margin-bottom:12px; box-shadow: 0 2px 6px rgba(11,44,95,0.04);">
-                    <div style="color:#047857; font-weight:800; font-size:0.84rem;">💬 WHATSAPP BUSINESS ALERT • STORE #104 • {row['category'].upper()}</div>
-                    <div style="color:#1E293B; margin-top:6px; font-size:0.93rem; line-height:1.5;">
-                        <strong style="color:#0B2C5F;">⚠️ SHELF REPLENISHMENT REQUIRED ({row['sap_id']}):</strong><br/>
-                        • <strong>Product:</strong> {row['name']} ({row['arabic_name']})<br/>
-                        • <strong>Barcode / Location:</strong> {row['ean13']} • {row['aisle']}<br/>
-                        • <strong>Verified Shelf Qty:</strong> {row['physical_qty']} units (SAP Book: {row['erp_qty']} | Variance: {row['variance']:+d} | Risk: SAR {row['rev_at_risk']:,.2f})<br/>
-                        • <strong>Action:</strong> Pull 1 case from Backroom Bay B or approve draft SAP Purchase Order.
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-
-    render_automated_alerts()
+        render_automated_alerts()
 
 # ==========================================
 # TAB 4: OVERHEAD CCTV THEFT BEHAVIORAL DETECTION
 # ==========================================
-with tab4:
-    st.subheader("🛡️ Overhead Store CCTV — Behavioral Theft Detection")
-    st.caption("Dedicated fixed overhead aisle camera feed (separate from handheld inventory phones). Detects concealment gestures and shelf sweeping in real time and dispatches alerts directly to Tab 3.")
+if tab_cctv is not None:
+    with tab_cctv:
+        st.subheader("🛡️ Overhead Store CCTV — Behavioral Theft Detection")
+        st.caption("Dedicated fixed overhead aisle camera feed (separate from handheld inventory phones). Detects concealment gestures and shelf sweeping in real time and dispatches alerts directly to Automated Store Alerts.")
 
-    col_cctv, col_arch = st.columns([1.25, 1], gap="large")
+        col_cctv, col_arch = st.columns([1.25, 1], gap="large")
 
-    with col_cctv:
-        st.markdown('<div class="cctv-panel">', unsafe_allow_html=True)
-        cam_select = st.selectbox(
-            "Select Overhead Store Camera Channel:",
-            [
-                "CAM-04 • Aisle C2 (Dairy & Infant Formula — High Shrinkage Zone)",
-                "CAM-07 • Aisle G1 (Personal Care & Cosmetics)",
-                "CAM-02 • Aisle A1 (Cooking Oils & Pantry)",
-            ],
-        )
-        aisle_label = cam_select.split("•")[1].strip() if "•" in cam_select else "Aisle C2"
-        cam_code = cam_select.split("•")[0].strip()
-
-        cctv_source = st.radio(
-            "Overhead Camera Input Source:",
-            [
-                "📹 Live Overhead Webcam / USB CCTV Feed",
-                "🎞️ Upload Overhead CCTV Footage (.mp4 / .mov)",
-            ],
-            horizontal=True,
-        )
-
-        if cctv_source == "📹 Live Overhead Webcam / USB CCTV Feed":
-            st.caption("Connect an overhead/laptop webcam to simulate a fixed ceiling aisle camera monitoring shopper posture and shelf interaction.")
-            cctv_live_html = """
-            <div style="background:#0B2C5F; border-radius:10px; overflow:hidden; position:relative; border:2px solid #0072CE;">
-                <video id="cctvVid" autoplay playsinline muted style="width:100%; max-height:310px; object-fit:cover; display:block;"></video>
-                <div style="position:absolute; top:10px; left:10px; right:10px; display:flex; justify-content:space-between; font-family:monospace; font-size:12px;">
-                    <span style="background:rgba(220,38,38,0.92); color:#fff; padding:4px 10px; border-radius:6px; font-weight:700;">● REC • OVERHEAD CCTV</span>
-                    <span id="cctvClock" style="background:rgba(15,23,42,0.85); color:#fff; padding:4px 10px; border-radius:6px;"></span>
-                </div>
-                <div style="position:absolute; bottom:10px; left:10px; background:rgba(15,23,42,0.85); color:#34D399; padding:4px 10px; border-radius:6px; font-family:monospace; font-size:11px;">
-                    POSE KEYPOINTS + CONCEALMENT TRACKER ACTIVE
-                </div>
-            </div>
-            <script>
-                const v = document.getElementById('cctvVid');
-                navigator.mediaDevices.getUserMedia({ video: true, audio: false })
-                    .then(s => { v.srcObject = s; })
-                    .catch(e => { console.log(e); });
-                setInterval(() => {
-                    document.getElementById('cctvClock').innerText = new Date().toLocaleTimeString();
-                }, 1000);
-            </script>
-            """
-            components.html(cctv_live_html, height=325)
-
-            st.markdown("##### ⚡ Demo Trigger: Simulate Overhead CCTV Theft Event")
-            st.caption("During your presentation, click below to simulate the overhead camera detecting suspicious concealment on this channel and immediately route a timestamped alert to Tab 3.")
-            sim_behavior = st.selectbox(
-                "Simulated Behavioral Event:",
+        with col_cctv:
+            st.markdown('<div class="cctv-panel">', unsafe_allow_html=True)
+            cam_select = st.selectbox(
+                "Select Overhead Store Camera Channel:",
                 [
-                    "Item Concealment in Jacket / Personal Bag (2 units removed from shelf)",
-                    "Rapid Shelf Sweeping into Backpack (High-Value Dairy/Formula)",
+                    "CAM-04 • Aisle C2 (Dairy & Infant Formula — High Shrinkage Zone)",
+                    "CAM-07 • Aisle G1 (Personal Care & Cosmetics)",
+                    "CAM-02 • Aisle A1 (Cooking Oils & Pantry)",
                 ],
-                key="sim_beh_select",
             )
-            if st.button("🚨 Trigger Overhead CCTV Theft Detection Alert", type="primary", use_container_width=True):
-                now_str = datetime.now().strftime("%Y-%m-%d %I:%M:%S %p")
-                shared_db["theft_alerts"].insert(0, {
-                    "timestamp": now_str,
-                    "camera_id": cam_code,
-                    "aisle": aisle_label,
-                    "behavior_type": sim_behavior,
-                    "confidence_pct": 94,
-                    "description": f"Overhead pose & action model detected hand-to-bag concealment gesture at {aisle_label} without placing items in a store basket.",
-                    "recommended_action": "Dispatch floor security supervisor to aisle exit & review 10-second CCTV buffer.",
-                })
-                st.error(f"🚨 Theft alert dispatched at {now_str}! Check Tab 3 ('Automated Store Alerts').")
-                st.rerun()
+            aisle_label = cam_select.split("•")[1].strip() if "•" in cam_select else "Aisle C2"
+            cam_code = cam_select.split("•")[0].strip()
 
-        else:
-            cctv_clip = st.file_uploader("Upload Overhead Aisle CCTV Video Clip (.mp4, .mov)", type=["mp4", "mov", "avi"])
-            if cctv_clip is not None:
-                st.video(cctv_clip)
-                if st.button("🔍 Run Behavioral Theft Analysis on CCTV Clip", type="primary", use_container_width=True):
-                    with st.spinner("Analyzing shopper skeleton posture & hand-to-pocket concealment across CCTV frames..."):
-                        try:
-                            clip_frames = extract_video_keyframes(cctv_clip.read(), max_frames=6)
-                            if not clip_frames:
-                                st.error("Could not read frames from uploaded CCTV clip.")
-                            else:
-                                verdict = analyze_cctv_theft_behavior(clip_frames, cam_code, active_gemini_key)
-                                now_str = datetime.now().strftime("%Y-%m-%d %I:%M:%S %p")
-                                if verdict.theft_detected:
-                                    shared_db["theft_alerts"].insert(0, {
-                                        "timestamp": now_str,
-                                        "camera_id": cam_code,
-                                        "aisle": aisle_label,
-                                        "behavior_type": verdict.behavior_type,
-                                        "confidence_pct": verdict.confidence_pct,
-                                        "description": verdict.description,
-                                        "recommended_action": verdict.recommended_action,
-                                    })
-                                    st.error(f"🚨 THEFT BEHAVIOR DETECTED ({verdict.confidence_pct}% confidence) at {now_str}! Alert sent to Tab 3.")
-                                    st.rerun()
+            cctv_source = st.radio(
+                "Overhead Camera Input Source:",
+                [
+                    "📹 Live Overhead Webcam / USB CCTV Feed",
+                    "🎞️ Upload Overhead CCTV Footage (.mp4 / .mov)",
+                ],
+                horizontal=True,
+            )
+
+            if cctv_source == "📹 Live Overhead Webcam / USB CCTV Feed":
+                st.caption("Connect an overhead/laptop webcam to simulate a fixed ceiling aisle camera monitoring shopper posture and shelf interaction.")
+                cctv_live_html = """
+                <div style="background:#0B2C5F; border-radius:10px; overflow:hidden; position:relative; border:2px solid #0072CE;">
+                    <video id="cctvVid" autoplay playsinline muted style="width:100%; max-height:310px; object-fit:cover; display:block;"></video>
+                    <div style="position:absolute; top:10px; left:10px; right:10px; display:flex; justify-content:space-between; font-family:monospace; font-size:12px;">
+                        <span style="background:rgba(220,38,38,0.92); color:#fff; padding:4px 10px; border-radius:6px; font-weight:700;">● REC • OVERHEAD CCTV</span>
+                        <span id="cctvClock" style="background:rgba(15,23,42,0.85); color:#fff; padding:4px 10px; border-radius:6px;"></span>
+                    </div>
+                    <div style="position:absolute; bottom:10px; left:10px; background:rgba(15,23,42,0.85); color:#34D399; padding:4px 10px; border-radius:6px; font-family:monospace; font-size:11px;">
+                        POSE KEYPOINTS + CONCEALMENT TRACKER ACTIVE
+                    </div>
+                </div>
+                <script>
+                    const v = document.getElementById('cctvVid');
+                    navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+                        .then(s => { v.srcObject = s; })
+                        .catch(e => { console.log(e); });
+                    setInterval(() => {
+                        document.getElementById('cctvClock').innerText = new Date().toLocaleTimeString();
+                    }, 1000);
+                </script>
+                """
+                components.html(cctv_live_html, height=325)
+
+                st.markdown("##### ⚡ Demo Trigger: Simulate Overhead CCTV Theft Event")
+                sim_behavior = st.selectbox(
+                    "Simulated Behavioral Event:",
+                    [
+                        "Item Concealment in Jacket / Personal Bag (2 units removed from shelf)",
+                        "Rapid Shelf Sweeping into Backpack (High-Value Dairy/Formula)",
+                    ],
+                    key="sim_beh_select",
+                )
+                if st.button("🚨 Trigger Overhead CCTV Theft Detection Alert", type="primary", use_container_width=True):
+                    now_str = datetime.now().strftime("%Y-%m-%d %I:%M:%S %p")
+                    shared_db["theft_alerts"].insert(0, {
+                        "timestamp": now_str,
+                        "camera_id": cam_code,
+                        "aisle": aisle_label,
+                        "behavior_type": sim_behavior,
+                        "confidence_pct": 94,
+                        "description": f"Overhead pose & action model detected hand-to-bag concealment gesture at {aisle_label} without placing items in a store basket.",
+                        "recommended_action": "Dispatch floor security supervisor to aisle exit & review 10-second CCTV buffer.",
+                    })
+                    st.error(f"🚨 Theft alert dispatched at {now_str}! Check Automated Store Alerts.")
+                    st.rerun()
+
+            else:
+                cctv_clip = st.file_uploader("Upload Overhead Aisle CCTV Video Clip (.mp4, .mov)", type=["mp4", "mov", "avi"])
+                if cctv_clip is not None:
+                    st.video(cctv_clip)
+                    if st.button("🔍 Run Behavioral Theft Analysis on CCTV Clip", type="primary", use_container_width=True):
+                        with st.spinner("Analyzing shopper skeleton posture & hand-to-pocket concealment across CCTV frames..."):
+                            try:
+                                clip_frames = extract_video_keyframes(cctv_clip.read(), max_frames=6)
+                                if not clip_frames:
+                                    st.error("Could not read frames from uploaded CCTV clip.")
                                 else:
-                                    st.success(f"✅ Normal Shopping Behavior ({verdict.confidence_pct}% confidence): {verdict.description}")
-                        except Exception as ex:
-                            st.error(f"CCTV analysis error: {ex}")
+                                    verdict = analyze_cctv_theft_behavior(clip_frames, cam_code, active_gemini_key)
+                                    now_str = datetime.now().strftime("%Y-%m-%d %I:%M:%S %p")
+                                    if verdict.theft_detected:
+                                        shared_db["theft_alerts"].insert(0, {
+                                            "timestamp": now_str,
+                                            "camera_id": cam_code,
+                                            "aisle": aisle_label,
+                                            "behavior_type": verdict.behavior_type,
+                                            "confidence_pct": verdict.confidence_pct,
+                                            "description": verdict.description,
+                                            "recommended_action": verdict.recommended_action,
+                                        })
+                                        st.error(f"🚨 THEFT BEHAVIOR DETECTED ({verdict.confidence_pct}% confidence) at {now_str}! Alert sent.")
+                                        st.rerun()
+                                    else:
+                                        st.success(f"✅ Normal Shopping Behavior ({verdict.confidence_pct}% confidence): {verdict.description}")
+                            except Exception as ex:
+                                st.error(f"CCTV analysis error: {ex}")
 
-        st.markdown('</div>', unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True)
 
-    with col_arch:
-        st.markdown('<div class="chart-card">', unsafe_allow_html=True)
-        st.markdown("#### 🧠 How StockSense Behavioral Theft Detection Works")
-        st.markdown("""
-        Unlike inventory scanning (done via handheld phones), **Theft Behavioral Detection** runs continuously on **fixed overhead store CCTV cameras** without using facial recognition:
+        with col_arch:
+            st.markdown('<div class="chart-card">', unsafe_allow_html=True)
+            st.markdown("#### 🧠 How StockSense Behavioral Theft Detection Works")
+            st.markdown("""
+            Unlike inventory scanning (done via handheld phones), **Theft Behavioral Detection** runs continuously on **fixed overhead store CCTV cameras** without using facial recognition:
 
-        1. **Skeleton Pose Estimation (YOLOv8-Pose):** Tracks wrist, elbow, and torso keypoints in real time across overhead video frames.
-        2. **Action & Concealment Recognition (SlowFast / VideoMAE + Vision AI):** Analyzes 3–5 second motion sequences to detect:
-           * **Concealment:** Hand picks item from shelf and moves directly into a pocket, backpack, or under clothing.
-           * **Shelf Sweeping:** Rapidly clearing multiple high-value items into a personal bag.
-        3. **Instant Alert Routing (Tab 3):** Whenever suspicious behavior is detected, StockSense timestamps the exact camera channel and aisle and pushes a **Priority Security Alert** to the Store Manager's alert feed.
-        """)
-        st.markdown("---")
-        st.markdown("#### 📡 Overhead CCTV Edge Telemetry")
-        st.write("• **Connected Store Cameras:** 14 / 14 RTSP Channels Online")
-        st.write("• **Privacy Compliance:** Anonymous Pose Keypoints (No Facial Recognition)")
-        st.write("• **Alert Latency:** < 2.5 seconds from gesture to Manager Alert")
-        st.markdown('</div>', unsafe_allow_html=True)
+            1. **Skeleton Pose Estimation (YOLOv8-Pose):** Tracks wrist, elbow, and torso keypoints in real time across overhead video frames.
+            2. **Action & Concealment Recognition (SlowFast / VideoMAE + Vision AI):** Analyzes 3–5 second motion sequences to detect:
+               * **Concealment:** Hand picks item from shelf and moves directly into a pocket, backpack, or under clothing.
+               * **Shelf Sweeping:** Rapidly clearing multiple high-value items into a personal bag.
+            3. **Instant Alert Routing:** Whenever suspicious behavior is detected, StockSense timestamps the exact camera channel and aisle and pushes a **Priority Security Alert** to the Store Manager's alert feed.
+            """)
+            st.markdown("---")
+            st.markdown("#### 📡 Overhead CCTV Edge Telemetry")
+            st.write("• **Connected Store Cameras:** 14 / 14 RTSP Channels Online")
+            st.write("• **Privacy Compliance:** Anonymous Pose Keypoints (No Facial Recognition)")
+            st.write("• **Alert Latency:** < 2.5 seconds from gesture to Manager Alert")
+            st.markdown('</div>', unsafe_allow_html=True)
