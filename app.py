@@ -226,7 +226,7 @@ st.markdown("""
 # --- REGISTER TWO-WAY LIVE SHELF SCANNER COMPONENT (ON-DEMAND CAMERA LOCK) ---
 @st.cache_resource
 def get_live_scanner_component():
-    comp_dir = os.path.join(tempfile.gettempdir(), "stocksense_live_scanner_brand_v10")
+    comp_dir = os.path.join(tempfile.gettempdir(), "stocksense_live_scanner_brand_v11")
     os.makedirs(comp_dir, exist_ok=True)
     index_path = os.path.join(comp_dir, "index.html")
     html_code = """<!DOCTYPE html>
@@ -492,14 +492,14 @@ async function scanSingleNow(forceManual) {
 </html>"""
     with open(index_path, "w", encoding="utf-8") as f:
         f.write(html_code)
-    return components.declare_component("stocksense_live_scanner_brand_v10", path=comp_dir)
+    return components.declare_component("stocksense_live_scanner_brand_v11", path=comp_dir)
 
 live_scanner_component = get_live_scanner_component()
 
-# --- REGISTER OVERHEAD CCTV LIVE OBS / CAMERA GUARD COMPONENT (ZERO-DEVICEID CONSTRAINT) ---
+# --- REGISTER OVERHEAD CCTV LIVE OBS / CAMERA GUARD COMPONENT ---
 @st.cache_resource
 def get_live_cctv_component():
-    comp_dir = os.path.join(tempfile.gettempdir(), "stocksense_live_cctv_guard_v7")
+    comp_dir = os.path.join(tempfile.gettempdir(), "stocksense_live_cctv_guard_v8")
     os.makedirs(comp_dir, exist_ok=True)
     index_path = os.path.join(comp_dir, "index.html")
     html_code = """<!DOCTYPE html>
@@ -526,7 +526,7 @@ def get_live_cctv_component():
 </head>
 <body>
 <div class="cam-bar">
-  <span id="camLabel" class="cam-label">🎥 Active Source: Default Browser Camera (OBS Virtual Camera)</span>
+  <span id="camLabel" class="cam-label">🎥 Active Source: OBS Virtual Camera (EZVIZ C6N)</span>
   <button class="btn-refresh" onclick="connectDefaultCamera()">🔄 Reconnect Live Feed</button>
 </div>
 
@@ -548,7 +548,7 @@ def get_live_cctv_component():
   <button class="btn-check" onclick="runBurstCheck()">⚡ Analyze Burst Now</button>
 </div>
 <div id="guardStatus" class="status-box">
-  Connecting directly to browser default video stream (<b>OBS Virtual Camera</b>)...
+  Connecting to <b>OBS Virtual Camera</b>...
 </div>
 
 <script>
@@ -592,7 +592,6 @@ async function connectDefaultCamera() {
       activeStream.getTracks().forEach(t => t.stop());
       activeStream = null;
     }
-    // Use plain { video: true } so Chromium/Edge uses the exact default camera shown in the address bar popup without empty-deviceId errors
     const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
     activeStream = stream;
     v.srcObject = stream;
@@ -603,7 +602,7 @@ async function connectDefaultCamera() {
     camLabel.innerText = "🎥 Live Feed: " + trackName;
     guardStatus.innerHTML = `<span style="color:#047857; font-weight:700;">✅ Live Video Connected:</span> ${trackName}. Click <b>Start Live AI Theft Guard</b> to monitor automatically.`;
   } catch (err) {
-    guardStatus.innerHTML = `<span style="color:#DC2626; font-weight:700;">⚠ Browser Iframe Blocked Video (${err.name}):</span> ${err.message}. Use the <b>Live Snapshot Capture</b> box right below or check Edge Camera Settings.`;
+    guardStatus.innerHTML = `<span style="color:#D97706; font-weight:700;">ℹ Edge Iframe Notice:</span> In Edge Settings → Camera, turn ON <b>"Ask before accessing"</b> (currently OFF) and click Reconnect, OR use the <b>Direct Top-Level OBS Live Feed</b> right below.`;
   }
   sendToStreamlit("streamlit:setFrameHeight", { height: document.body.scrollHeight + 14 });
 }
@@ -703,7 +702,7 @@ async function runBurstCheck() {
 </html>"""
     with open(index_path, "w", encoding="utf-8") as f:
         f.write(html_code)
-    return components.declare_component("stocksense_live_cctv_guard_v7", path=comp_dir)
+    return components.declare_component("stocksense_live_cctv_guard_v8", path=comp_dir)
 
 cctv_guard_component = get_live_cctv_component()
 
@@ -1236,7 +1235,7 @@ with tab_scanner:
             live_event = live_scanner_component(
                 api_key=active_gemini_key,
                 catalog=catalog_payload,
-                key="live_field_cam_brand_v10",
+                key="live_field_cam_brand_v11",
             )
 
             if isinstance(live_event, dict) and live_event.get("event_id"):
@@ -1754,18 +1753,46 @@ if tab_cctv is not None:
             cctv_source = st.radio(
                 "Overhead Camera Input Source:",
                 [
-                    "📹 Live Overhead Webcam / OBS Virtual CCTV Feed",
+                    "📹 Direct Top-Level OBS Virtual CCTV Feed (Always Works)",
+                    "🛡️ Continuous Auto-Guard Stream (Requires Edge 'Ask before accessing' ON)",
                     "🎞️ Upload Overhead CCTV Footage (.mp4 / .mov)",
                 ],
-                horizontal=True,
+                horizontal=False,
             )
 
-            if cctv_source == "📹 Live Overhead Webcam / OBS Virtual CCTV Feed":
+            if cctv_source == "📹 Direct Top-Level OBS Virtual CCTV Feed (Always Works)":
+                st.info("Live stream from **OBS Virtual Camera (EZVIZ C6N)**. Click **Take Photo** whenever you want AI to inspect the current scene for concealment/theft behavior.")
+                native_snap = st.camera_input("Live Overhead CCTV Feed (OBS Virtual Camera)", key="native_obs_snap_main")
+                if native_snap is not None:
+                    snap_img = Image.open(native_snap)
+                    if st.button("🔍 Analyze Captured CCTV Frame for Theft Behavior", type="primary", use_container_width=True):
+                        with st.spinner("Running behavioral theft inspection on captured frame..."):
+                            try:
+                                verdict = analyze_cctv_theft_behavior([snap_img], cam_code, active_gemini_key)
+                                now_str = datetime.now().strftime("%Y-%m-%d %I:%M:%S %p")
+                                if verdict.theft_detected:
+                                    shared_db["theft_alerts"].insert(0, {
+                                        "timestamp": now_str,
+                                        "camera_id": cam_code,
+                                        "aisle": aisle_label,
+                                        "behavior_type": verdict.behavior_type,
+                                        "confidence_pct": verdict.confidence_pct,
+                                        "description": verdict.description,
+                                        "recommended_action": verdict.recommended_action,
+                                    })
+                                    st.error(f"🚨 THEFT BEHAVIOR DETECTED ({verdict.confidence_pct}%) at {now_str}! Alert sent to Automated Store Alerts.")
+                                    st.rerun()
+                                else:
+                                    st.success(f"✅ Normal Activity ({verdict.confidence_pct}%): {verdict.description}")
+                            except Exception as ex:
+                                st.error(f"Analysis error: {ex}")
+
+            elif cctv_source == "🛡️ Continuous Auto-Guard Stream (Requires Edge 'Ask before accessing' ON)":
                 cctv_event = cctv_guard_component(
                     api_key=active_gemini_key,
                     cam_code=cam_code,
                     aisle=aisle_label,
-                    key="live_ezviz_cctv_guard_v7",
+                    key="live_ezviz_cctv_guard_v8",
                 )
 
                 if isinstance(cctv_event, dict) and cctv_event.get("alert_id"):
@@ -1782,56 +1809,6 @@ if tab_cctv is not None:
                             "recommended_action": cctv_event.get("recommended_action", "Dispatch floor security supervisor."),
                         })
                         st.rerun()
-
-                with st.expander("📸 Direct Native CCTV Camera Snapshot (Guaranteed OBS Feed)", expanded=False):
-                    st.caption("Uses Streamlit's top-level native camera bridge directly connected to OBS Virtual Camera:")
-                    native_snap = st.camera_input("Capture Frame from Overhead OBS CCTV Feed", key="native_obs_snap")
-                    if native_snap is not None:
-                        snap_img = Image.open(native_snap)
-                        if st.button("🔍 Analyze Captured CCTV Frame for Theft Behavior", type="primary", use_container_width=True):
-                            with st.spinner("Running behavioral theft inspection on captured frame..."):
-                                try:
-                                    verdict = analyze_cctv_theft_behavior([snap_img], cam_code, active_gemini_key)
-                                    now_str = datetime.now().strftime("%Y-%m-%d %I:%M:%S %p")
-                                    if verdict.theft_detected:
-                                        shared_db["theft_alerts"].insert(0, {
-                                            "timestamp": now_str,
-                                            "camera_id": cam_code,
-                                            "aisle": aisle_label,
-                                            "behavior_type": verdict.behavior_type,
-                                            "confidence_pct": verdict.confidence_pct,
-                                            "description": verdict.description,
-                                            "recommended_action": verdict.recommended_action,
-                                        })
-                                        st.error(f"🚨 THEFT BEHAVIOR DETECTED ({verdict.confidence_pct}%) at {now_str}! Alert sent to Automated Store Alerts.")
-                                        st.rerun()
-                                    else:
-                                        st.success(f"✅ Normal Activity ({verdict.confidence_pct}%): {verdict.description}")
-                                except Exception as ex:
-                                    st.error(f"Analysis error: {ex}")
-
-                st.markdown("##### ⚡ Demo Trigger: Simulate Overhead CCTV Theft Event")
-                sim_behavior = st.selectbox(
-                    "Simulated Behavioral Event:",
-                    [
-                        "Item Concealment in Jacket / Personal Bag (2 units removed from shelf)",
-                        "Rapid Shelf Sweeping into Backpack (High-Value Dairy/Formula)",
-                    ],
-                    key="sim_beh_select",
-                )
-                if st.button("🚨 Trigger Overhead CCTV Theft Detection Alert", type="primary", use_container_width=True):
-                    now_str = datetime.now().strftime("%Y-%m-%d %I:%M:%S %p")
-                    shared_db["theft_alerts"].insert(0, {
-                        "timestamp": now_str,
-                        "camera_id": cam_code,
-                        "aisle": aisle_label,
-                        "behavior_type": sim_behavior,
-                        "confidence_pct": 94,
-                        "description": f"Overhead pose & action model detected hand-to-bag concealment gesture at {aisle_label} without placing items in a store basket.",
-                        "recommended_action": "Dispatch floor security supervisor to aisle exit & review 10-second CCTV buffer.",
-                    })
-                    st.error(f"🚨 Theft alert dispatched at {now_str}! Check Automated Store Alerts.")
-                    st.rerun()
 
             else:
                 cctv_clip = st.file_uploader("Upload Overhead Aisle CCTV Video Clip (.mp4, .mov)", type=["mp4", "mov", "avi"])
@@ -1862,6 +1839,30 @@ if tab_cctv is not None:
                                         st.success(f"✅ Normal Shopping Behavior ({verdict.confidence_pct}% confidence): {verdict.description}")
                             except Exception as ex:
                                 st.error(f"CCTV analysis error: {ex}")
+
+            st.markdown("---")
+            st.markdown("##### ⚡ Demo Trigger: Simulate Overhead CCTV Theft Event")
+            sim_behavior = st.selectbox(
+                "Simulated Behavioral Event:",
+                [
+                    "Item Concealment in Jacket / Personal Bag (2 units removed from shelf)",
+                    "Rapid Shelf Sweeping into Backpack (High-Value Dairy/Formula)",
+                ],
+                key="sim_beh_select",
+            )
+            if st.button("🚨 Trigger Overhead CCTV Theft Detection Alert", type="primary", use_container_width=True):
+                now_str = datetime.now().strftime("%Y-%m-%d %I:%M:%S %p")
+                shared_db["theft_alerts"].insert(0, {
+                    "timestamp": now_str,
+                    "camera_id": cam_code,
+                    "aisle": aisle_label,
+                    "behavior_type": sim_behavior,
+                    "confidence_pct": 94,
+                    "description": f"Overhead pose & action model detected hand-to-bag concealment gesture at {aisle_label} without placing items in a store basket.",
+                    "recommended_action": "Dispatch floor security supervisor to aisle exit & review 10-second CCTV buffer.",
+                })
+                st.error(f"🚨 Theft alert dispatched at {now_str}! Check Automated Store Alerts.")
+                st.rerun()
 
             st.markdown('</div>', unsafe_allow_html=True)
 
