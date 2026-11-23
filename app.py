@@ -223,10 +223,10 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- REGISTER TWO-WAY LIVE SHELF SCANNER COMPONENT ---
+# --- REGISTER TWO-WAY LIVE SHELF SCANNER COMPONENT (ON-DEMAND CAMERA LOCK) ---
 @st.cache_resource
 def get_live_scanner_component():
-    comp_dir = os.path.join(tempfile.gettempdir(), "stocksense_live_scanner_brand_v7")
+    comp_dir = os.path.join(tempfile.gettempdir(), "stocksense_live_scanner_brand_v9")
     os.makedirs(comp_dir, exist_ok=True)
     index_path = os.path.join(comp_dir, "index.html")
     html_code = """<!DOCTYPE html>
@@ -237,7 +237,7 @@ def get_live_scanner_component():
 <style>
   body { margin: 0; padding: 0; background: transparent; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #0B2C5F; }
   .card { background: linear-gradient(180deg, #FFFFFF 0%, #F4F9FF 100%); border: 1px solid #C6D8EC; border-top: 4px solid #0072CE; border-radius:14px; padding:12px; box-sizing:border-box; box-shadow: 0 4px 14px rgba(11,44,95,0.07); }
-  .vid-wrap { position:relative; width:100%; border-radius:10px; overflow:hidden; background:#0B2C5F; border: 1px solid #93C5FD; }
+  .vid-wrap { position:relative; width:100%; min-height:200px; border-radius:10px; overflow:hidden; background:#0B2C5F; border: 1px solid #93C5FD; }
   video { width:100%; max-height:260px; object-fit:cover; display:block; }
   .hud { position:absolute; top:10px; left:10px; right:10px; display:flex; justify-content:space-between; align-items:center; }
   .badge { background:rgba(255,255,255,0.96); color:#047857; border:1px solid #00A86B; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:700; }
@@ -257,7 +257,7 @@ def get_live_scanner_component():
   <div class="vid-wrap">
     <video id="cam" autoplay playsinline muted></video>
     <div class="hud">
-      <span id="badge" class="badge">● LIVE CAMERA READY</span>
+      <span id="badge" class="badge">● STANDBY (TAP START)</span>
       <span id="timer" class="timer">Auto-Scan: OFF</span>
     </div>
   </div>
@@ -309,6 +309,7 @@ const resultsEl = document.getElementById('liveResults');
 const toggleBtn = document.getElementById('toggleBtn');
 const pushStatus = document.getElementById('pushStatus');
 
+let activeCamStream = null;
 let scanning = false;
 let intervalId = null;
 let inFlight = false;
@@ -347,34 +348,51 @@ function frameChangedSignificantly() {
   return (diff / (data.length / 16)) > 4.5;
 }
 
-async function startCamera() {
+async function ensureCameraStarted() {
+  if (activeCamStream && video.srcObject) return true;
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 } },
+    activeCamStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: "environment" } },
       audio: false
     });
-    video.srcObject = stream;
+    video.srcObject = activeCamStream;
+    await video.play().catch(() => {});
+    badge.innerText = "● LIVE CAMERA READY";
+    badge.style.color = "#047857";
+    return true;
   } catch (err) {
     badge.innerText = "⚠ Camera blocked";
     badge.style.color = "#DC2626";
     resultsEl.innerHTML = `<span style="color:#DC2626;">Camera error: ${err.message}</span>`;
+    return false;
   }
 }
-startCamera();
 
-function toggleAutoScan() {
+function stopCameraStream() {
+  if (activeCamStream) {
+    activeCamStream.getTracks().forEach(t => t.stop());
+    activeCamStream = null;
+    video.srcObject = null;
+  }
+}
+
+async function toggleAutoScan() {
   scanning = !scanning;
   if (scanning) {
-    toggleBtn.innerText = "⏸ Pause Live Viewfinder";
+    const ok = await ensureCameraStarted();
+    if (!ok) { scanning = false; return; }
+    toggleBtn.innerText = "⏸ Pause & Release Camera";
     toggleBtn.style.background = "#DC2626";
     timerEl.innerText = "Auto-Scan: ON (4.0s)";
     scanSingleNow(true);
     intervalId = setInterval(() => scanSingleNow(false), 4000);
   } else {
-    toggleBtn.innerText = "▶ Resume Live AI Viewfinder";
+    toggleBtn.innerText = "▶ Start Live AI Viewfinder";
     toggleBtn.style.background = "#0072CE";
-    timerEl.innerText = "Auto-Scan: PAUSED";
+    timerEl.innerText = "Auto-Scan: OFF";
+    badge.innerText = "● STANDBY (CAMERA RELEASED)";
     clearInterval(intervalId);
+    stopCameraStream();
   }
 }
 
@@ -409,7 +427,10 @@ async function callGeminiWithRetry(base64Jpeg) {
 }
 
 async function scanSingleNow(forceManual) {
-  if (inFlight || !video.videoWidth || !API_KEY) return;
+  if (inFlight || !API_KEY) return;
+  const ok = await ensureCameraStarted();
+  if (!ok || !video.videoWidth) return;
+
   if (!forceManual && !frameChangedSignificantly()) {
     unchangedCount++;
     if (unchangedCount > 1 && lastValidHtml) {
@@ -474,14 +495,14 @@ async function scanSingleNow(forceManual) {
 </html>"""
     with open(index_path, "w", encoding="utf-8") as f:
         f.write(html_code)
-    return components.declare_component("stocksense_live_scanner_brand_v7", path=comp_dir)
+    return components.declare_component("stocksense_live_scanner_brand_v9", path=comp_dir)
 
 live_scanner_component = get_live_scanner_component()
 
 # --- REGISTER OVERHEAD CCTV LIVE OBS / CAMERA GUARD COMPONENT ---
 @st.cache_resource
 def get_live_cctv_component():
-    comp_dir = os.path.join(tempfile.gettempdir(), "stocksense_live_cctv_guard_v3")
+    comp_dir = os.path.join(tempfile.gettempdir(), "stocksense_live_cctv_guard_v6")
     os.makedirs(comp_dir, exist_ok=True)
     index_path = os.path.join(comp_dir, "index.html")
     html_code = """<!DOCTYPE html>
@@ -509,9 +530,9 @@ def get_live_cctv_component():
 <body>
 <div class="cam-bar">
   <select id="camPicker" onchange="switchSelectedCamera()">
-    <option value="">Detecting available cameras (OBS Virtual Camera / Webcam)...</option>
+    <option value="">Connecting to OBS Virtual Camera...</option>
   </select>
-  <button class="btn-refresh" onclick="initCameras(true)">🔄 Refresh Cameras</button>
+  <button class="btn-refresh" onclick="initCameras()">🔄 Connect / Refresh Camera</button>
 </div>
 
 <div class="wrap">
@@ -532,7 +553,7 @@ def get_live_cctv_component():
   <button class="btn-check" onclick="runBurstCheck()">⚡ Analyze Burst Now</button>
 </div>
 <div id="guardStatus" class="status-box">
-  Select <b>OBS Virtual Camera</b> in the dropdown above, then click <b>Start Live AI Theft Guard</b>.
+  Select <b>OBS Virtual Camera</b> above and click <b>Start Live AI Theft Guard</b>.
 </div>
 
 <script>
@@ -570,24 +591,45 @@ let guardActive = false;
 let guardTimer = null;
 let busy = false;
 
-async function startStreamById(deviceId) {
+function stopExistingTracks() {
   if (activeStream) {
     activeStream.getTracks().forEach(t => t.stop());
+    activeStream = null;
+    v.srcObject = null;
   }
-  const constraints = deviceId
-    ? { video: { deviceId: { exact: deviceId }, width: { ideal: 1280 } }, audio: false }
-    : { video: true, audio: false };
-  activeStream = await navigator.mediaDevices.getUserMedia(constraints);
-  v.srcObject = activeStream;
 }
 
-async function initCameras(forcePrompt) {
-  try {
-    if (!activeStream || forcePrompt) {
-      await startStreamById(null);
+async function startStream(deviceId) {
+  stopExistingTracks();
+  let stream = null;
+  if (deviceId) {
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { deviceId: { exact: deviceId } },
+        audio: false
+      });
+    } catch (e1) {
+      stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
     }
-    const devices = await navigator.mediaDevices.enumerateDevices();
-    const videoInputs = devices.filter(d => d.kind === 'videoinput');
+  } else {
+    stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+  }
+  activeStream = stream;
+  v.srcObject = stream;
+  await v.play().catch(() => {});
+}
+
+async function initCameras() {
+  try {
+    let devices = await navigator.mediaDevices.enumerateDevices();
+    let videoInputs = devices.filter(d => d.kind === 'videoinput');
+
+    if (!videoInputs.some(d => d.label)) {
+      await startStream(null);
+      devices = await navigator.mediaDevices.enumerateDevices();
+      videoInputs = devices.filter(d => d.kind === 'videoinput');
+    }
+
     camPicker.innerHTML = "";
     let obsDeviceId = "";
 
@@ -604,24 +646,34 @@ async function initCameras(forcePrompt) {
 
     if (obsDeviceId) {
       camPicker.value = obsDeviceId;
-      await startStreamById(obsDeviceId);
+      await startStream(obsDeviceId);
       guardStatus.innerHTML = `<span style="color:#047857; font-weight:700;">✅ Connected to OBS Virtual Camera (EZVIZ C6N Live Feed).</span>`;
     } else if (videoInputs.length > 0) {
-      await startStreamById(videoInputs[0].deviceId);
+      camPicker.value = videoInputs[0].deviceId;
+      await startStream(videoInputs[0].deviceId);
+      guardStatus.innerHTML = `<span style="color:#047857; font-weight:700;">✅ Connected to ${videoInputs[0].label || "Camera"}.</span>`;
+    } else {
+      guardStatus.innerHTML = `<span style="color:#DC2626; font-weight:700;">⚠ No camera devices reported by browser.</span>`;
     }
   } catch (err) {
-    guardStatus.innerHTML = `<span style="color:#DC2626; font-weight:700;">⚠ Camera Permission Needed:</span> ${err.message}. Click the lock/camera icon in your browser bar and allow Camera access, then click Refresh Cameras.`;
+    guardStatus.innerHTML = `<span style="color:#DC2626; font-weight:700;">⚠ Camera Status:</span> ${err.message}. Click Connect / Refresh Camera.`;
   }
   sendToStreamlit("streamlit:setFrameHeight", { height: document.body.scrollHeight + 14 });
 }
 
 async function switchSelectedCamera() {
   if (camPicker.value) {
-    await startStreamById(camPicker.value);
+    try {
+      await startStream(camPicker.value);
+      const selText = camPicker.options[camPicker.selectedIndex]?.text || "Selected Camera";
+      guardStatus.innerHTML = `<span style="color:#047857; font-weight:700;">✅ Active Feed: ${selText}</span>`;
+    } catch (err) {
+      guardStatus.innerHTML = `<span style="color:#DC2626; font-weight:700;">⚠ Switch Error:</span> ${err.message}`;
+    }
   }
 }
 
-initCameras(false);
+setTimeout(initCameras, 350);
 
 setInterval(() => {
   document.getElementById('cctvClock').innerText = new Date().toLocaleTimeString();
@@ -716,7 +768,7 @@ async function runBurstCheck() {
 </html>"""
     with open(index_path, "w", encoding="utf-8") as f:
         f.write(html_code)
-    return components.declare_component("stocksense_live_cctv_guard_v3", path=comp_dir)
+    return components.declare_component("stocksense_live_cctv_guard_v6", path=comp_dir)
 
 cctv_guard_component = get_live_cctv_component()
 
@@ -1249,7 +1301,7 @@ with tab_scanner:
             live_event = live_scanner_component(
                 api_key=active_gemini_key,
                 catalog=catalog_payload,
-                key="live_field_cam_brand_v7",
+                key="live_field_cam_brand_v9",
             )
 
             if isinstance(live_event, dict) and live_event.get("event_id"):
@@ -1779,7 +1831,7 @@ if tab_cctv is not None:
                     api_key=active_gemini_key,
                     cam_code=cam_code,
                     aisle=aisle_label,
-                    key="live_ezviz_cctv_guard_v3",
+                    key="live_ezviz_cctv_guard_v6",
                 )
 
                 if isinstance(cctv_event, dict) and cctv_event.get("alert_id"):
