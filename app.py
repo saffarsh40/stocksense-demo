@@ -223,10 +223,10 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- REGISTER TWO-WAY LIVE SHELF SCANNER COMPONENT (ON-DEMAND CAMERA LOCK) ---
+# --- REGISTER TWO-WAY LIVE SHELF SCANNER COMPONENT (4-MODEL QUOTA POOL) ---
 @st.cache_resource
 def get_live_scanner_component():
-    comp_dir = os.path.join(tempfile.gettempdir(), "stocksense_live_scanner_brand_v12")
+    comp_dir = os.path.join(tempfile.gettempdir(), "stocksense_live_scanner_brand_v13")
     os.makedirs(comp_dir, exist_ok=True)
     index_path = os.path.join(comp_dir, "index.html")
     html_code = """<!DOCTYPE html>
@@ -318,6 +318,7 @@ let currentFrameItems = [];
 let lastValidHtml = "";
 let prevThumb = null;
 let unchangedCount = 0;
+let modelCursor = 0;
 
 function sendLiveSync(mode) {
   if (Object.keys(currentFrameCounts).length === 0) {
@@ -351,7 +352,7 @@ function frameChangedSignificantly() {
 async function ensureCameraStarted() {
   if (activeCamStream && video.srcObject) return true;
   try {
-    activeCamStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+    activeCamStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false });
     video.srcObject = activeCamStream;
     await video.play().catch(() => {});
     badge.innerText = "● LIVE CAMERA READY";
@@ -380,9 +381,9 @@ async function toggleAutoScan() {
     if (!ok) { scanning = false; return; }
     toggleBtn.innerText = "⏸ Pause & Release Camera";
     toggleBtn.style.background = "#DC2626";
-    timerEl.innerText = "Auto-Scan: ON (4.0s)";
+    timerEl.innerText = "Auto-Scan: ON (5.0s)";
     scanSingleNow(true);
-    intervalId = setInterval(() => scanSingleNow(false), 4000);
+    intervalId = setInterval(() => scanSingleNow(false), 5000);
   } else {
     toggleBtn.innerText = "▶ Start Live AI Viewfinder";
     toggleBtn.style.background = "#0072CE";
@@ -393,32 +394,28 @@ async function toggleAutoScan() {
   }
 }
 
-const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-
-async function callGeminiWithRetry(base64Jpeg) {
+async function callGeminiPooled(base64Jpeg) {
   const prompt = `You are StockSense AI. Identify all grocery/household products in this frame and count the EXACT number of physical units currently visible. Map each product to its matching sap_id in this catalog: ${JSON.stringify(CATALOG)}. If a visible product is not in the catalog, set sap_id="SAP-UNMAPPED". Return ONLY valid JSON: {"items": [{"sap_id": "...", "name": "...", "text_read": "...", "count": 1}]}`;
-  const models = ["gemini-3.5-flash-lite", "gemini-3.8-flash"];
+  const pool = ["gemini-3.5-flash-lite", "gemini-3.1-flash-lite", "gemini-3.8-flash", "gemini-3.6-flash"];
 
-  for (const model of models) {
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
-        const res = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "x-goog-api-key": API_KEY },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: "image/jpeg", data: base64Jpeg } }] }],
-            generationConfig: { responseMimeType: "application/json", temperature: 0.1 }
-          })
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data?.error?.message || ("HTTP " + res.status));
-        const rawText = data.candidates[0].content.parts[0].text;
-        return { parsed: JSON.parse(rawText), usedModel: model };
-      } catch (e) {
-        await sleep(650 * (attempt + 1));
-      }
-    }
+  for (let i = 0; i < pool.length; i++) {
+    const model = pool[(modelCursor + i) % pool.length];
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-goog-api-key": API_KEY },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: "image/jpeg", data: base64Jpeg } }] }],
+          generationConfig: { responseMimeType: "application/json", temperature: 0.1 }
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) continue;
+      modelCursor = (modelCursor + i + 1) % pool.length;
+      const rawText = data.candidates[0].content.parts[0].text;
+      return { parsed: JSON.parse(rawText), usedModel: model };
+    } catch (e) {}
   }
   return null;
 }
@@ -443,12 +440,12 @@ async function scanSingleNow(forceManual) {
   badge.innerText = "🔍 READING LABELS...";
   badge.style.color = "#0072CE";
 
-  canvas.width = 512;
-  canvas.height = Math.round((video.videoHeight / video.videoWidth) * 512);
+  canvas.width = 416;
+  canvas.height = Math.round((video.videoHeight / video.videoWidth) * 416);
   canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-  const b64 = canvas.toDataURL('image/jpeg', 0.78).split(',')[1];
+  const b64 = canvas.toDataURL('image/jpeg', 0.70).split(',')[1];
 
-  const result = await callGeminiWithRetry(b64);
+  const result = await callGeminiPooled(b64);
 
   if (result && result.parsed && result.parsed.items) {
     badge.innerText = "● LIVE LOCK (" + result.usedModel + ")";
@@ -479,11 +476,8 @@ async function scanSingleNow(forceManual) {
     resultsEl.innerHTML = html;
     sendToStreamlit("streamlit:setFrameHeight", { height: document.body.scrollHeight + 10 });
   } else {
-    badge.innerText = "⏳ CLOUD BUSY (HOLDING)";
+    badge.innerText = "⏳ COOLING DOWN (HOLDING)";
     badge.style.color = "#D97706";
-    if (!lastValidHtml) {
-      resultsEl.innerHTML = `<div style="color:#D97706; font-size:12px;">⏳ High cloud demand — automatically retrying on next sweep...</div>`;
-    }
   }
   inFlight = false;
 }
@@ -492,14 +486,14 @@ async function scanSingleNow(forceManual) {
 </html>"""
     with open(index_path, "w", encoding="utf-8") as f:
         f.write(html_code)
-    return components.declare_component("stocksense_live_scanner_brand_v12", path=comp_dir)
+    return components.declare_component("stocksense_live_scanner_brand_v13", path=comp_dir)
 
 live_scanner_component = get_live_scanner_component()
 
-# --- REGISTER OVERHEAD CCTV LIVE STREAM & ENABLE THEFT DETECTION COMPONENT ---
+# --- REGISTER OVERHEAD CCTV LIVE STREAM (MOTION-FILTERED + 4-MODEL QUOTA POOL + CHIME) ---
 @st.cache_resource
 def get_live_cctv_component():
-    comp_dir = os.path.join(tempfile.gettempdir(), "stocksense_live_cctv_guard_v9")
+    comp_dir = os.path.join(tempfile.gettempdir(), "stocksense_live_cctv_guard_v10")
     os.makedirs(comp_dir, exist_ok=True)
     index_path = os.path.join(comp_dir, "index.html")
     html_code = """<!DOCTYPE html>
@@ -542,10 +536,11 @@ def get_live_cctv_component():
 </div>
 <canvas id="c1" style="display:none;"></canvas>
 <canvas id="c2" style="display:none;"></canvas>
+<canvas id="motionC" width="32" height="32" style="display:none;"></canvas>
 
 <div class="controls">
   <button id="guardBtn" class="btn-guard" onclick="toggleGuard()">🛡️ Enable Theft Detection</button>
-  <button class="btn-check" onclick="runBurstCheck()">⚡ Analyze Burst Now</button>
+  <button class="btn-check" onclick="runBurstCheck(true)">⚡ Analyze Burst Now</button>
 </div>
 <div id="guardStatus" class="status-box">
   Connecting to live overhead CCTV feed...
@@ -556,6 +551,26 @@ let API_KEY = "";
 let CAM_CODE = "CAM-04";
 let AISLE = "Aisle C2";
 let activeStream = null;
+let cctvModelCursor = 0;
+let prevCctvThumb = null;
+
+function playAlertChime() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [880, 1174].forEach((freq, idx) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.14, ctx.currentTime + idx * 0.16);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + idx * 0.16 + 0.25);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(ctx.currentTime + idx * 0.16);
+      osc.stop(ctx.currentTime + idx * 0.16 + 0.26);
+    });
+  } catch (e) {}
+}
 
 function sendToStreamlit(type, data) {
   window.parent.postMessage(Object.assign({ isStreamlitMessage: true, type: type }, data), "*");
@@ -578,6 +593,7 @@ const v = document.getElementById('cctvVid');
 const camLabel = document.getElementById('camLabel');
 const c1 = document.getElementById('c1');
 const c2 = document.getElementById('c2');
+const motionC = document.getElementById('motionC');
 const poseHud = document.getElementById('poseHud');
 const guardBtn = document.getElementById('guardBtn');
 const guardStatus = document.getElementById('guardStatus');
@@ -585,6 +601,17 @@ const guardStatus = document.getElementById('guardStatus');
 let guardActive = false;
 let guardTimer = null;
 let busy = false;
+
+function hasSignificantMotion() {
+  const ctx = motionC.getContext('2d');
+  ctx.drawImage(v, 0, 0, 32, 32);
+  const data = ctx.getImageData(0, 0, 32, 32).data;
+  if (!prevCctvThumb) { prevCctvThumb = data; return true; }
+  let diff = 0;
+  for (let i = 0; i < data.length; i += 16) { diff += Math.abs(data[i] - prevCctvThumb[i]); }
+  prevCctvThumb = data;
+  return (diff / (data.length / 16)) > 3.2;
+}
 
 async function connectCamera() {
   try {
@@ -618,9 +645,9 @@ function toggleGuard() {
   if (guardActive) {
     guardBtn.innerText = "⏸ Disable Theft Detection";
     guardBtn.style.background = "#0B2C5F";
-    poseHud.innerText = "THEFT DETECTION: ACTIVE (5.5s SWEEP)";
-    runBurstCheck();
-    guardTimer = setInterval(runBurstCheck, 5500);
+    poseHud.innerText = "THEFT DETECTION: ACTIVE (MOTION-TRIGGERED)";
+    runBurstCheck(true);
+    guardTimer = setInterval(() => runBurstCheck(false), 5000);
   } else {
     guardBtn.innerText = "🛡️ Enable Theft Detection";
     guardBtn.style.background = "linear-gradient(90deg, #DC2626 0%, #B91C1C 100%)";
@@ -630,28 +657,35 @@ function toggleGuard() {
 }
 
 function captureFrame(canvasEl) {
-  canvasEl.width = 512;
-  canvasEl.height = Math.round((v.videoHeight / v.videoWidth) * 512);
+  canvasEl.width = 384;
+  canvasEl.height = Math.round((v.videoHeight / v.videoWidth) * 384);
   canvasEl.getContext('2d').drawImage(v, 0, 0, canvasEl.width, canvasEl.height);
-  return canvasEl.toDataURL('image/jpeg', 0.78).split(',')[1];
+  return canvasEl.toDataURL('image/jpeg', 0.65).split(',')[1];
 }
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
-async function runBurstCheck() {
+async function runBurstCheck(forceManual) {
   if (busy || !v.videoWidth || !API_KEY) return;
+  if (!forceManual && !hasSignificantMotion()) {
+    poseHud.innerText = "● IDLE AISLE • NO MOTION (SAVING QUOTA)";
+    poseHud.style.color = "#34D399";
+    return;
+  }
+
   busy = true;
   poseHud.innerText = "🔍 ANALYZING MOTION SEQUENCE...";
   poseHud.style.color = "#FBBF24";
 
   const frame1 = captureFrame(c1);
-  await sleep(900);
+  await sleep(850);
   const frame2 = captureFrame(c2);
 
-  const prompt = `You are StockSense AI Loss-Prevention running on overhead CCTV (${CAM_CODE} - ${AISLE}). Compare these 2 sequential frames (0.9s apart) for shoplifting or suspicious theft behavior: hiding an item in a pocket/backpack/bag/jacket, or rapid shelf sweeping. Normal sitting/standing or holding a phone/item openly without concealment is NOT theft. Return ONLY valid JSON: {"theft_detected": true/false, "behavior_type": "...", "confidence_pct": 85, "description": "...", "recommended_action": "..."}`;
+  const prompt = `You are StockSense AI Loss-Prevention running on overhead CCTV (${CAM_CODE} - ${AISLE}). Treat any shelf, desk, or counter in view as a retail store shelf. Compare these 2 sequential frames (0.85s apart) for shoplifting or suspicious theft behavior: picking up an item and concealing/placing it into a pocket, backpack, bag, or under clothing/jacket, or rapid shelf sweeping. If an item is hidden in a bag/pocket/clothing between Frame 1 and Frame 2, set theft_detected=true. Return ONLY valid JSON: {"theft_detected": true/false, "behavior_type": "...", "confidence_pct": 85, "description": "...", "recommended_action": "..."}`;
 
-  const models = ["gemini-3.5-flash-lite", "gemini-3.8-flash"];
-  for (const model of models) {
+  const pool = ["gemini-3.5-flash-lite", "gemini-3.1-flash-lite", "gemini-3.8-flash", "gemini-3.6-flash"];
+  for (let i = 0; i < pool.length; i++) {
+    const model = pool[(cctvModelCursor + i) % pool.length];
     try {
       const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
         method: "POST",
@@ -667,10 +701,12 @@ async function runBurstCheck() {
       });
       const data = await res.json();
       if (!res.ok) continue;
+      cctvModelCursor = (cctvModelCursor + i + 1) % pool.length;
       const verdict = JSON.parse(data.candidates[0].content.parts[0].text);
       const ts = new Date().toLocaleTimeString();
 
       if (verdict.theft_detected && verdict.confidence_pct >= 70) {
+        playAlertChime();
         poseHud.innerText = "🚨 THEFT GESTURE DETECTED (" + verdict.confidence_pct + "%)";
         poseHud.style.color = "#F87171";
         guardStatus.innerHTML = `<div style="color:#B91C1C; font-weight:700;">🚨 [${ts}] ALERT DISPATCHED TO AUTOMATED STORE ALERTS: ${verdict.behavior_type} (${verdict.confidence_pct}%)</div><div style="margin-top:4px;">${verdict.description}</div>`;
@@ -702,7 +738,7 @@ async function runBurstCheck() {
 </html>"""
     with open(index_path, "w", encoding="utf-8") as f:
         f.write(html_code)
-    return components.declare_component("stocksense_live_cctv_guard_v9", path=comp_dir)
+    return components.declare_component("stocksense_live_cctv_guard_v10", path=comp_dir)
 
 cctv_guard_component = get_live_cctv_component()
 
@@ -906,7 +942,7 @@ with st.sidebar:
         st.session_state.last_cctv_alert_id = None
         st.rerun()
 
-# --- BARCODE & MULTI-MODEL RESILIENT VISION ENGINE ---
+# --- BARCODE & 4-MODEL POOLED VISION ENGINE ---
 def scan_local_barcodes(pil_image: Image.Image, catalog: list):
     img_np = np.array(pil_image.convert("RGB"))
     gray = cv2.cvtColor(img_np, cv2.COLOR_RGB2GRAY)
@@ -952,11 +988,11 @@ def scan_local_barcodes(pil_image: Image.Image, catalog: list):
 
 
 def call_gemini_schema_with_failover(client: genai.Client, contents: list, schema_cls):
-    model_chain = ["gemini-3.5-flash-lite", "gemini-3.8-flash"]
+    model_chain = ["gemini-3.5-flash-lite", "gemini-3.1-flash-lite", "gemini-3.8-flash", "gemini-3.6-flash"]
     last_err = None
 
     for model_name in model_chain:
-        for attempt in range(3):
+        for attempt in range(2):
             try:
                 response = client.models.generate_content(
                     model=model_name,
@@ -973,7 +1009,7 @@ def call_gemini_schema_with_failover(client: genai.Client, contents: list, schem
                 last_err = err
                 err_str = str(err)
                 if "503" in err_str or "UNAVAILABLE" in err_str or "429" in err_str or "high demand" in err_str.lower():
-                    time.sleep(0.8 * (attempt + 1))
+                    time.sleep(0.6 * (attempt + 1))
                     continue
                 raise err
 
@@ -1235,7 +1271,7 @@ with tab_scanner:
             live_event = live_scanner_component(
                 api_key=active_gemini_key,
                 catalog=catalog_payload,
-                key="live_field_cam_brand_v12",
+                key="live_field_cam_brand_v13",
             )
 
             if isinstance(live_event, dict) and live_event.get("event_id"):
@@ -1764,7 +1800,7 @@ if tab_cctv is not None:
                     api_key=active_gemini_key,
                     cam_code=cam_code,
                     aisle=aisle_label,
-                    key="live_ezviz_cctv_guard_v9",
+                    key="live_ezviz_cctv_guard_v10",
                 )
 
                 if isinstance(cctv_event, dict) and cctv_event.get("alert_id"):
