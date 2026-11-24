@@ -223,10 +223,10 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- REGISTER TWO-WAY LIVE SHELF SCANNER COMPONENT (AUTO-OPEN REAR CAMERA + SWITCH LENS + 4-MODEL POOL) ---
+# --- REGISTER TWO-WAY LIVE SHELF SCANNER COMPONENT (BACK CAMERA ONLY + AUTO-OPEN) ---
 @st.cache_resource
 def get_live_scanner_component():
-    comp_dir = os.path.join(tempfile.gettempdir(), "stocksense_live_scanner_brand_v14")
+    comp_dir = os.path.join(tempfile.gettempdir(), "stocksense_live_scanner_brand_v16")
     os.makedirs(comp_dir, exist_ok=True)
     index_path = os.path.join(comp_dir, "index.html")
     html_code = """<!DOCTYPE html>
@@ -239,9 +239,7 @@ def get_live_scanner_component():
   .card { background: linear-gradient(180deg, #FFFFFF 0%, #F4F9FF 100%); border: 1px solid #C6D8EC; border-top: 4px solid #0072CE; border-radius:14px; padding:12px; box-sizing:border-box; box-shadow: 0 4px 14px rgba(11,44,95,0.07); }
   .vid-wrap { position:relative; width:100%; min-height:220px; border-radius:10px; overflow:hidden; background:#0B2C5F; border: 1px solid #93C5FD; }
   video { width:100%; max-height:270px; object-fit:cover; display:block; }
-  .hud { position:absolute; top:10px; left:10px; right:10px; display:flex; justify-content:space-between; align-items:center; gap:6px; }
-  .badge { background:rgba(255,255,255,0.96); color:#047857; border:1px solid #00A86B; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:700; }
-  .btn-flip { background:rgba(11,44,95,0.92); color:#FFFFFF; border:1px solid #93C5FD; padding:5px 10px; border-radius:999px; font-size:11.5px; font-weight:700; cursor:pointer; }
+  .badge { position:absolute; top:10px; left:10px; background:rgba(255,255,255,0.96); color:#047857; border:1px solid #00A86B; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:700; }
   .row { display:flex; gap:8px; margin-top:10px; }
   .btn-start { flex:1; background: linear-gradient(90deg, #0072CE 0%, #0284C7 100%); color:#fff; border:none; padding:11px; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer; }
   .btn-now { background:#E0EEFF; color:#0B2C5F; border:1px solid #93C5FD; padding:11px 14px; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer; }
@@ -256,10 +254,7 @@ def get_live_scanner_component():
 <div class="card">
   <div class="vid-wrap">
     <video id="cam" autoplay playsinline muted></video>
-    <div class="hud">
-      <span id="badge" class="badge">● STARTING REAR CAMERA...</span>
-      <button class="btn-flip" onclick="switchCameraLens()">🔄 Switch Cam</button>
-    </div>
+    <span id="badge" class="badge">● STARTING CAMERA...</span>
   </div>
   <canvas id="canvas" style="display:none;"></canvas>
   <canvas id="motionCanvas" width="32" height="32" style="display:none;"></canvas>
@@ -270,7 +265,7 @@ def get_live_scanner_component():
   </div>
 
   <div id="liveResults" class="results">
-    <span style="color:#475569;">Rear camera live. Point at shelf products and tap <b>Start Live AI Viewfinder</b>...</span>
+    <span style="color:#475569;">Point camera at shelf products and tap <b>Start Live AI Viewfinder</b>...</span>
   </div>
 
   <div class="sync-col">
@@ -309,7 +304,6 @@ const toggleBtn = document.getElementById('toggleBtn');
 const pushStatus = document.getElementById('pushStatus');
 
 let activeCamStream = null;
-let useRearCamera = true;
 let scanning = false;
 let intervalId = null;
 let inFlight = false;
@@ -349,21 +343,32 @@ function frameChangedSignificantly() {
   return (diff / (data.length / 16)) > 4.5;
 }
 
-async function openCameraStream() {
-  if (activeCamStream) {
-    activeCamStream.getTracks().forEach(t => t.stop());
-    activeCamStream = null;
-  }
-  const desiredMode = useRearCamera ? "environment" : "user";
+async function openBackCameraOnly() {
   try {
-    try {
-      activeCamStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: desiredMode }, audio: false });
-    } catch (e) {
-      activeCamStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+    // 1. Request permission so Android Chrome reveals physical camera labels
+    const tempStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const videoInputs = devices.filter(d => d.kind === "videoinput");
+
+    // 2. Select primary back/rear camera (never front/selfie)
+    let backCam = videoInputs.find(d => /back|rear|environment/i.test(d.label) && /0|main/i.test(d.label));
+    if (!backCam) {
+      backCam = videoInputs.find(d => /back|rear|environment/i.test(d.label));
     }
+
+    if (backCam && backCam.deviceId) {
+      tempStream.getTracks().forEach(t => t.stop());
+      activeCamStream = await navigator.mediaDevices.getUserMedia({
+        video: { deviceId: { exact: backCam.deviceId } },
+        audio: false
+      });
+    } else {
+      activeCamStream = tempStream;
+    }
+
     video.srcObject = activeCamStream;
     await video.play().catch(() => {});
-    badge.innerText = useRearCamera ? "● REAR CAM LIVE" : "● FRONT CAM LIVE";
+    badge.innerText = "● LIVE CAMERA READY";
     badge.style.color = "#047857";
     return true;
   } catch (err) {
@@ -374,20 +379,14 @@ async function openCameraStream() {
   }
 }
 
-async function switchCameraLens() {
-  useRearCamera = !useRearCamera;
-  prevThumb = null;
-  await openCameraStream();
-}
-
-// Open rear camera immediately on page load
-openCameraStream();
+// Open back camera immediately on page load
+openBackCameraOnly();
 
 async function toggleAutoScan() {
   scanning = !scanning;
   if (scanning) {
     if (!activeCamStream || !video.srcObject) {
-      const ok = await openCameraStream();
+      const ok = await openBackCameraOnly();
       if (!ok) { scanning = false; return; }
     }
     toggleBtn.innerText = "⏸ Pause AI Reading";
@@ -397,7 +396,7 @@ async function toggleAutoScan() {
   } else {
     toggleBtn.innerText = "▶ Start Live AI Viewfinder";
     toggleBtn.style.background = "linear-gradient(90deg, #0072CE 0%, #0284C7 100%)";
-    badge.innerText = useRearCamera ? "● REAR CAM LIVE (PAUSED)" : "● FRONT CAM LIVE (PAUSED)";
+    badge.innerText = "● PAUSED";
     badge.style.color = "#047857";
     clearInterval(intervalId);
   }
@@ -432,7 +431,7 @@ async function callGeminiPooled(base64Jpeg) {
 async function scanSingleNow(forceManual) {
   if (inFlight || !API_KEY) return;
   if (!activeCamStream || !video.srcObject) {
-    const ok = await openCameraStream();
+    const ok = await openBackCameraOnly();
     if (!ok) return;
   }
   if (!video.videoWidth) return;
@@ -498,7 +497,7 @@ async function scanSingleNow(forceManual) {
 </html>"""
     with open(index_path, "w", encoding="utf-8") as f:
         f.write(html_code)
-    return components.declare_component("stocksense_live_scanner_brand_v14", path=comp_dir)
+    return components.declare_component("stocksense_live_scanner_brand_v16", path=comp_dir)
 
 live_scanner_component = get_live_scanner_component()
 
@@ -1255,12 +1254,12 @@ with tab_scanner:
     col_cam, col_list = st.columns([1.1, 1], gap="large")
 
     with col_cam:
-        st.subheader("1. Live Rear-Camera Shelf Scanner")
+        st.subheader("1. Live Camera Scanner")
         st.caption(f"All scans pushed from this device are credited to **{current_user}**.")
         audit_mode = st.radio(
             "Capture Mode:",
             [
-                "🎥 Live Rear-Camera Auto-Scanner (Instant Push)",
+                "🎥 Live Camera Auto-Scanner (Instant Push)",
                 "🎞️ Aisle Walk-Through Video (100+ Items)",
                 "📸 Multi-Shelf Photo Batch",
             ],
@@ -1268,7 +1267,7 @@ with tab_scanner:
         )
 
         # --- MODE A: TRUE TWO-WAY LIVE VIEWFINDER ---
-        if audit_mode == "🎥 Live Rear-Camera Auto-Scanner (Instant Push)":
+        if audit_mode == "🎥 Live Camera Auto-Scanner (Instant Push)":
             catalog_payload = [
                 {
                     "sku_key": i["sku_key"],
@@ -1283,7 +1282,7 @@ with tab_scanner:
             live_event = live_scanner_component(
                 api_key=active_gemini_key,
                 catalog=catalog_payload,
-                key="live_field_cam_brand_v14",
+                key="live_field_cam_brand_v16",
             )
 
             if isinstance(live_event, dict) and live_event.get("event_id"):
