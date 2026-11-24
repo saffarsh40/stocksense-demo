@@ -1,6 +1,9 @@
 import base64
+import io
 import json
 import os
+import shutil
+import subprocess
 import tempfile
 import time
 from datetime import datetime
@@ -223,7 +226,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- REGISTER TWO-WAY LIVE SHELF SCANNER COMPONENT (BACK CAMERA ONLY + AUTO-OPEN) ---
+# --- REGISTER TWO-WAY LIVE SHELF SCANNER COMPONENT (REV01 BACK CAMERA ONLY) ---
 @st.cache_resource
 def get_live_scanner_component():
     comp_dir = os.path.join(tempfile.gettempdir(), "stocksense_live_scanner_brand_v16")
@@ -345,12 +348,10 @@ function frameChangedSignificantly() {
 
 async function openBackCameraOnly() {
   try {
-    // 1. Request permission so Android Chrome reveals physical camera labels
     const tempStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
     const devices = await navigator.mediaDevices.enumerateDevices();
     const videoInputs = devices.filter(d => d.kind === "videoinput");
 
-    // 2. Select primary back/rear camera (never front/selfie)
     let backCam = videoInputs.find(d => /back|rear|environment/i.test(d.label) && /0|main/i.test(d.label));
     if (!backCam) {
       backCam = videoInputs.find(d => /back|rear|environment/i.test(d.label));
@@ -379,7 +380,6 @@ async function openBackCameraOnly() {
   }
 }
 
-// Open back camera immediately on page load
 openBackCameraOnly();
 
 async function toggleAutoScan() {
@@ -501,10 +501,10 @@ async function scanSingleNow(forceManual) {
 
 live_scanner_component = get_live_scanner_component()
 
-# --- REGISTER OVERHEAD CCTV LIVE STREAM (MOTION-FILTERED + 4-MODEL QUOTA POOL + CHIME) ---
+# --- REGISTER OVERHEAD CCTV LIVE STREAM (3-FRAME BURST + LIVE RED BOUNDING BOX OVERLAY) ---
 @st.cache_resource
 def get_live_cctv_component():
-    comp_dir = os.path.join(tempfile.gettempdir(), "stocksense_live_cctv_guard_v10")
+    comp_dir = os.path.join(tempfile.gettempdir(), "stocksense_live_cctv_guard_v11_rev02")
     os.makedirs(comp_dir, exist_ok=True)
     index_path = os.path.join(comp_dir, "index.html")
     html_code = """<!DOCTYPE html>
@@ -518,10 +518,34 @@ def get_live_cctv_component():
   .btn-refresh { background:#E0EEFF; color:#0B2C5F; border:1px solid #93C5FD; padding:6px 12px; border-radius:7px; font-weight:700; font-size:12px; cursor:pointer; }
   .wrap { background:#0B2C5F; border-radius:10px; overflow:hidden; position:relative; border:2px solid #0072CE; min-height:250px; }
   video { width:100%; max-height:330px; object-fit:cover; display:block; background:#000; }
-  .top-hud { position:absolute; top:10px; left:10px; right:10px; display:flex; justify-content:space-between; font-family:monospace; font-size:12px; pointer-events:none; }
+  .red-bbox {
+    position: absolute;
+    display: none;
+    border: 3.5px solid #EF4444;
+    background: rgba(239, 68, 68, 0.14);
+    box-shadow: 0 0 18px rgba(239, 68, 68, 0.75);
+    border-radius: 6px;
+    pointer-events: none;
+    box-sizing: border-box;
+    z-index: 10;
+  }
+  .red-bbox-tag {
+    position: absolute;
+    top: -24px;
+    left: -3px;
+    background: #DC2626;
+    color: #FFFFFF;
+    font-family: monospace;
+    font-size: 11px;
+    font-weight: 800;
+    padding: 3px 8px;
+    border-radius: 4px 4px 4px 0;
+    white-space: nowrap;
+  }
+  .top-hud { position:absolute; top:10px; left:10px; right:10px; display:flex; justify-content:space-between; font-family:monospace; font-size:12px; pointer-events:none; z-index:12; }
   .rec { background:rgba(220,38,38,0.92); color:#fff; padding:4px 10px; border-radius:6px; font-weight:700; }
   .clk { background:rgba(15,23,42,0.85); color:#fff; padding:4px 10px; border-radius:6px; }
-  .bot-hud { position:absolute; bottom:10px; left:10px; right:10px; display:flex; justify-content:space-between; align-items:center; pointer-events:none; }
+  .bot-hud { position:absolute; bottom:10px; left:10px; right:10px; display:flex; justify-content:space-between; align-items:center; pointer-events:none; z-index:12; }
   .pose { background:rgba(15,23,42,0.88); color:#34D399; padding:4px 10px; border-radius:6px; font-family:monospace; font-size:11px; }
   .controls { display:flex; gap:8px; margin-top:10px; }
   .btn-guard { flex:1; background:linear-gradient(90deg, #DC2626 0%, #B91C1C 100%); color:#fff; border:none; padding:12px; border-radius:8px; font-weight:700; font-size:13.5px; cursor:pointer; }
@@ -531,27 +555,31 @@ def get_live_cctv_component():
 </head>
 <body>
 <div class="cam-bar">
-  <span id="camLabel" class="cam-label">🎥 Live CCTV Source: OBS Virtual Camera (EZVIZ C6N)</span>
+  <span id="camLabel" class="cam-label">🎥 Live CCTV Source: Overhead Aisle Feed</span>
   <button class="btn-refresh" onclick="connectCamera()">🔄 Refresh Feed</button>
 </div>
 
-<div class="wrap">
+<div class="wrap" id="videoWrap">
   <video id="cctvVid" autoplay playsinline muted></video>
+  <div id="redBbox" class="red-bbox">
+    <span id="redBboxTag" class="red-bbox-tag">🚨 SUSPECTED CONCEALMENT</span>
+  </div>
   <div class="top-hud">
     <span id="recBadge" class="rec">● REC • OVERHEAD CCTV</span>
     <span id="cctvClock" class="clk"></span>
   </div>
   <div class="bot-hud">
-    <span id="poseHud" class="pose">POSE KEYPOINTS + CONCEALMENT TRACKER READY</span>
+    <span id="poseHud" class="pose">3-FRAME POSE & CONCEALMENT TRACKER READY</span>
   </div>
 </div>
 <canvas id="c1" style="display:none;"></canvas>
 <canvas id="c2" style="display:none;"></canvas>
+<canvas id="c3" style="display:none;"></canvas>
 <canvas id="motionC" width="32" height="32" style="display:none;"></canvas>
 
 <div class="controls">
   <button id="guardBtn" class="btn-guard" onclick="toggleGuard()">🛡️ Enable Theft Detection</button>
-  <button class="btn-check" onclick="runBurstCheck(true)">⚡ Analyze Burst Now</button>
+  <button class="btn-check" onclick="runBurstCheck(true)">⚡ Analyze 3-Frame Burst</button>
 </div>
 <div id="guardStatus" class="status-box">
   Connecting to live overhead CCTV feed...
@@ -564,6 +592,7 @@ let AISLE = "Aisle C2";
 let activeStream = null;
 let cctvModelCursor = 0;
 let prevCctvThumb = null;
+let bboxHideTimer = null;
 
 function playAlertChime() {
   try {
@@ -583,6 +612,34 @@ function playAlertChime() {
   } catch (e) {}
 }
 
+function showRedBoundingBox(bboxNorm, labelText) {
+  const boxEl = document.getElementById('redBbox');
+  const tagEl = document.getElementById('redBboxTag');
+  const wrapEl = document.getElementById('videoWrap');
+
+  let ymin = 150, xmin = 220, ymax = 880, xmax = 780;
+  if (Array.isArray(bboxNorm) && bboxNorm.length === 4) {
+    ymin = Math.max(40, Math.min(900, Number(bboxNorm[0]) || 150));
+    xmin = Math.max(20, Math.min(900, Number(bboxNorm[1]) || 220));
+    ymax = Math.max(ymin + 120, Math.min(980, Number(bboxNorm[2]) || 880));
+    xmax = Math.max(xmin + 120, Math.min(980, Number(bboxNorm[3]) || 780));
+  }
+
+  boxEl.style.top = (ymin / 10) + "%";
+  boxEl.style.left = (xmin / 10) + "%";
+  boxEl.style.height = ((ymax - ymin) / 10) + "%";
+  boxEl.style.width = ((xmax - xmin) / 10) + "%";
+  tagEl.innerText = "🚨 " + labelText;
+  boxEl.style.display = "block";
+  wrapEl.style.borderColor = "#EF4444";
+
+  if (bboxHideTimer) clearTimeout(bboxHideTimer);
+  bboxHideTimer = setTimeout(() => {
+    boxEl.style.display = "none";
+    wrapEl.style.borderColor = "#0072CE";
+  }, 8000);
+}
+
 function sendToStreamlit(type, data) {
   window.parent.postMessage(Object.assign({ isStreamlitMessage: true, type: type }, data), "*");
 }
@@ -598,12 +655,13 @@ window.addEventListener("message", function(event) {
 });
 
 sendToStreamlit("streamlit:componentReady", { apiVersion: 1 });
-sendToStreamlit("streamlit:setFrameHeight", { height: 530 });
+sendToStreamlit("streamlit:setFrameHeight", { height: 540 });
 
 const v = document.getElementById('cctvVid');
 const camLabel = document.getElementById('camLabel');
 const c1 = document.getElementById('c1');
 const c2 = document.getElementById('c2');
+const c3 = document.getElementById('c3');
 const motionC = document.getElementById('motionC');
 const poseHud = document.getElementById('poseHud');
 const guardBtn = document.getElementById('guardBtn');
@@ -636,7 +694,7 @@ async function connectCamera() {
     await v.play().catch(() => {});
 
     const track = stream.getVideoTracks()[0];
-    const trackName = (track && track.label) ? track.label : "OBS Virtual Camera (EZVIZ C6N)";
+    const trackName = (track && track.label) ? track.label : "Overhead Aisle CCTV Feed";
     camLabel.innerText = "🎥 Live CCTV Source: " + trackName;
     guardStatus.innerHTML = `<span style="color:#047857; font-weight:700;">✅ Live Feed Active:</span> ${trackName}. Click <b>Enable Theft Detection</b> to start real-time behavioral monitoring.`;
   } catch (err) {
@@ -656,13 +714,13 @@ function toggleGuard() {
   if (guardActive) {
     guardBtn.innerText = "⏸ Disable Theft Detection";
     guardBtn.style.background = "#0B2C5F";
-    poseHud.innerText = "THEFT DETECTION: ACTIVE (MOTION-TRIGGERED)";
+    poseHud.innerText = "THEFT DETECTION: ACTIVE (3-FRAME BURST)";
     runBurstCheck(true);
     guardTimer = setInterval(() => runBurstCheck(false), 5000);
   } else {
     guardBtn.innerText = "🛡️ Enable Theft Detection";
     guardBtn.style.background = "linear-gradient(90deg, #DC2626 0%, #B91C1C 100%)";
-    poseHud.innerText = "POSE KEYPOINTS + CONCEALMENT TRACKER READY";
+    poseHud.innerText = "3-FRAME POSE & CONCEALMENT TRACKER READY";
     clearInterval(guardTimer);
   }
 }
@@ -685,14 +743,16 @@ async function runBurstCheck(forceManual) {
   }
 
   busy = true;
-  poseHud.innerText = "🔍 ANALYZING MOTION SEQUENCE...";
+  poseHud.innerText = "🔍 ANALYZING 3-FRAME SEQUENCE...";
   poseHud.style.color = "#FBBF24";
 
   const frame1 = captureFrame(c1);
-  await sleep(850);
+  await sleep(500);
   const frame2 = captureFrame(c2);
+  await sleep(500);
+  const frame3 = captureFrame(c3);
 
-  const prompt = `You are StockSense AI Loss-Prevention running on overhead CCTV (${CAM_CODE} - ${AISLE}). Treat any shelf, desk, or counter in view as a retail store shelf. Compare these 2 sequential frames (0.85s apart) for shoplifting or suspicious theft behavior: picking up an item and concealing/placing it into a pocket, backpack, bag, or under clothing/jacket, or rapid shelf sweeping. If an item is hidden in a bag/pocket/clothing between Frame 1 and Frame 2, set theft_detected=true. Return ONLY valid JSON: {"theft_detected": true/false, "behavior_type": "...", "confidence_pct": 85, "description": "...", "recommended_action": "..."}`;
+  const prompt = `You are StockSense AI Loss-Prevention running on overhead CCTV (${CAM_CODE} - ${AISLE}). Compare these 3 sequential frames (0.5s apart: before, during, after) for shoplifting or suspicious theft behavior: picking up an item and concealing/placing it into a pocket, backpack, bag, or under clothing, or rapid shelf sweeping. If theft behavior is detected, return normalized 0-1000 coordinates [ymin, xmin, ymax, xmax] around the person/concealment zone in Frame 3. Recommended actions must follow non-confrontational retail loss-prevention policy (monitor via CCTV, offer friendly customer service in aisle, alert licensed security before POS exit—never instruct staff to search pockets). Return ONLY valid JSON: {"theft_detected": true/false, "behavior_type": "...", "confidence_pct": 85, "suspect_bbox_1000": [150, 220, 880, 780], "description": "...", "recommended_action": "..."}`;
 
   const pool = ["gemini-3.5-flash-lite", "gemini-3.1-flash-lite", "gemini-3.8-flash", "gemini-3.6-flash"];
   for (let i = 0; i < pool.length; i++) {
@@ -705,7 +765,8 @@ async function runBurstCheck(forceManual) {
           contents: [{ parts: [
             { text: prompt },
             { inline_data: { mime_type: "image/jpeg", data: frame1 } },
-            { inline_data: { mime_type: "image/jpeg", data: frame2 } }
+            { inline_data: { mime_type: "image/jpeg", data: frame2 } },
+            { inline_data: { mime_type: "image/jpeg", data: frame3 } }
           ]}],
           generationConfig: { responseMimeType: "application/json", temperature: 0.1 }
         })
@@ -718,6 +779,7 @@ async function runBurstCheck(forceManual) {
 
       if (verdict.theft_detected && verdict.confidence_pct >= 70) {
         playAlertChime();
+        showRedBoundingBox(verdict.suspect_bbox_1000, `${verdict.behavior_type} (${verdict.confidence_pct}%)`);
         poseHud.innerText = "🚨 THEFT GESTURE DETECTED (" + verdict.confidence_pct + "%)";
         poseHud.style.color = "#F87171";
         guardStatus.innerHTML = `<div style="color:#B91C1C; font-weight:700;">🚨 [${ts}] ALERT DISPATCHED TO AUTOMATED STORE ALERTS: ${verdict.behavior_type} (${verdict.confidence_pct}%)</div><div style="margin-top:4px;">${verdict.description}</div>`;
@@ -730,7 +792,7 @@ async function runBurstCheck(forceManual) {
             behavior_type: verdict.behavior_type,
             confidence_pct: verdict.confidence_pct,
             description: verdict.description,
-            recommended_action: verdict.recommended_action || "Dispatch floor security supervisor to aisle exit immediately."
+            recommended_action: verdict.recommended_action || "Continue live CCTV tracking, offer proactive aisle assistance, and notify licensed security supervisor near POS exit."
           }
         });
       } else {
@@ -749,7 +811,7 @@ async function runBurstCheck(forceManual) {
 </html>"""
     with open(index_path, "w", encoding="utf-8") as f:
         f.write(html_code)
-    return components.declare_component("stocksense_live_cctv_guard_v10", path=comp_dir)
+    return components.declare_component("stocksense_live_cctv_guard_v11_rev02", path=comp_dir)
 
 cctv_guard_component = get_live_cctv_component()
 
@@ -909,8 +971,10 @@ class TheftBehaviorResult(BaseModel):
     theft_detected: bool = Field(description="True if suspicious shoplifting, item concealment in pocket/bag, or rapid shelf sweeping is observed")
     behavior_type: str = Field(description="e.g., 'Item Concealment in Pocket/Bag', 'Rapid Shelf Sweeping', or 'Normal Shopping Behavior'")
     confidence_pct: int = Field(description="Confidence percentage 0-100")
+    key_frame_index: int = Field(default=3, description="1-based index of the frame where concealment or action is most clearly visible")
+    suspect_bbox_1000: List[int] = Field(default=[150, 220, 880, 780], description="Normalized 0-1000 coordinates [ymin, xmin, ymax, xmax] framing the person and concealment zone")
     description: str = Field(description="Objective description of body/hand interaction with shelf items observed in the CCTV frames")
-    recommended_action: str = Field(description="Immediate security guard or floor supervisor action")
+    recommended_action: str = Field(description="Non-confrontational retail loss-prevention action (monitor via CCTV, offer friendly customer assistance, alert licensed security near POS exit)")
 
 # --- SESSION STATE ---
 if "authenticated_user" not in st.session_state:
@@ -927,6 +991,10 @@ if "live_sync_feedback" not in st.session_state:
     st.session_state.live_sync_feedback = ""
 if "last_cctv_alert_id" not in st.session_state:
     st.session_state.last_cctv_alert_id = None
+if "last_cctv_verdict" not in st.session_state:
+    st.session_state.last_cctv_verdict = None
+if "last_cctv_file_sig" not in st.session_state:
+    st.session_state.last_cctv_file_sig = None
 
 # --- SIDEBAR SETTINGS ---
 with st.sidebar:
@@ -951,6 +1019,8 @@ with st.sidebar:
         st.session_state.last_barcode_hits = []
         st.session_state.live_sync_feedback = ""
         st.session_state.last_cctv_alert_id = None
+        st.session_state.last_cctv_verdict = None
+        st.session_state.last_cctv_file_sig = None
         st.rerun()
 
 # --- BARCODE & 4-MODEL POOLED VISION ENGINE ---
@@ -1081,9 +1151,12 @@ def analyze_cctv_theft_behavior(pil_images: List[Image.Image], camera_id: str, a
     client = genai.Client(api_key=api_key)
     prompt = f"""
 You are StockSense AI Loss-Prevention & Behavioral Analytics running on overhead retail CCTV camera ({camera_id}).
-Analyze these overhead CCTV frame(s) for shoplifting or suspicious theft behavior:
+Analyze these {len(pil_images)} chronological overhead CCTV frames (1 to {len(pil_images)}) for shoplifting or suspicious theft behavior:
 - Look specifically for hand-to-pocket / hand-to-bag concealment, hiding items under clothing, or rapid shelf-sweeping of multiple products into a personal bag.
-- Distinguish normal shopping (placing items in a store basket/trolley or inspecting a label) from active concealment/theft behavior.
+- Distinguish normal shopping (placing items in a store basket/trolley or inspecting a label and returning it) from active concealment/theft behavior.
+- Set `key_frame_index` (1 to {len(pil_images)}) to the exact frame where the concealment or action is clearest.
+- Set `suspect_bbox_1000` to normalized 0-1000 coordinates [ymin, xmin, ymax, xmax] tightly framing the person and hand/pocket concealment area in that key frame.
+- For `recommended_action`, follow standard non-confrontational retail loss-prevention policy: continue live CCTV tracking, offer friendly customer service in the aisle, and notify licensed security near the POS exit (never instruct floor staff to search pockets).
 Return structured JSON evaluating whether theft behavior is occurring.
 """
     return call_gemini_schema_with_failover(client, [*pil_images, prompt], TheftBehaviorResult)
@@ -1111,6 +1184,234 @@ def extract_video_keyframes(video_bytes: bytes, max_frames: int = 8) -> List[Ima
     cap.release()
     os.remove(tmp_path)
     return frames
+
+
+def prepare_cctv_browser_playback(video_bytes: bytes, max_preview_frames: int = 24):
+    """
+    Ensures uploaded CCTV dataset videos (even legacy mp4v/XVID codecs) render cleanly inside the browser:
+    1) Transcodes to browser-safe H.264 MP4 if ffmpeg is installed on the host.
+    2) Extracts smooth preview frames + 6 evenly spaced AI keyframes so an interactive CCTV monitor player works 100% of the time even without ffmpeg.
+    """
+    h264_bytes = None
+    ffmpeg_bin = shutil.which("ffmpeg")
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as tmp_in:
+        tmp_in.write(video_bytes)
+        in_path = tmp_in.name
+
+    if ffmpeg_bin:
+        out_path = in_path.replace(".mp4", "_h264.mp4")
+        try:
+            subprocess.run(
+                [
+                    ffmpeg_bin, "-y", "-i", in_path,
+                    "-c:v", "libx264", "-preset", "ultrafast", "-crf", "26",
+                    "-pix_fmt", "yuv420p", "-movflags", "+faststart", "-an",
+                    out_path,
+                ],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=20,
+                check=True,
+            )
+            if os.path.exists(out_path) and os.path.getsize(out_path) > 1000:
+                with open(out_path, "rb") as f_out:
+                    h264_bytes = f_out.read()
+        except Exception:
+            h264_bytes = None
+        finally:
+            if os.path.exists(out_path):
+                os.remove(out_path)
+
+    cap = cv2.VideoCapture(in_path)
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    fps = cap.get(cv2.CAP_PROP_FPS) or 15.0
+    duration_sec = round(total_frames / fps, 1) if total_frames > 0 and fps > 0 else 0.0
+
+    preview_frames = []
+    ai_keyframes = []
+
+    if total_frames > 0:
+        prev_indices = np.linspace(0, max(0, total_frames - 1), min(max_preview_frames, total_frames), dtype=int)
+        for idx in prev_indices:
+            cap.set(cv2.CAP_PROP_POS_FRAMES, int(idx))
+            ret, frame = cap.read()
+            if ret:
+                rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                pil_f = Image.fromarray(rgb)
+                pil_f.thumbnail((640, 640))
+                preview_frames.append(pil_f)
+
+        ai_indices = np.linspace(0, max(0, total_frames - 1), min(6, total_frames), dtype=int)
+        for idx in ai_indices:
+            cap.set(cv2.CAP_PROP_POS_FRAMES, int(idx))
+            ret, frame = cap.read()
+            if ret:
+                rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                pil_f = Image.fromarray(rgb)
+                pil_f.thumbnail((760, 760))
+                ai_keyframes.append(pil_f)
+
+    cap.release()
+    os.remove(in_path)
+    return h264_bytes, preview_frames, ai_keyframes, duration_sec
+
+
+def draw_theft_bbox_on_frame(pil_img: Image.Image, bbox_1000: List[int], label: str) -> Image.Image:
+    annotated = pil_img.convert("RGB").copy()
+    w, h = annotated.size
+    draw = ImageDraw.Draw(annotated)
+
+    if not bbox_1000 or len(bbox_1000) != 4:
+        bbox_1000 = [150, 220, 880, 780]
+
+    ymin = max(10, min(h - 40, int((bbox_1000[0] / 1000.0) * h)))
+    xmin = max(10, min(w - 40, int((bbox_1000[1] / 1000.0) * w)))
+    ymax = max(ymin + 30, min(h - 10, int((bbox_1000[2] / 1000.0) * h)))
+    xmax = max(xmin + 30, min(w - 10, int((bbox_1000[3] / 1000.0) * w)))
+
+    # Crisp red detection rectangle
+    for offset in range(4):
+        draw.rectangle([xmin - offset, ymin - offset, xmax + offset, ymax + offset], outline="#EF4444")
+
+    tag_text = f" {label} "
+    tag_w = min(w - xmin, max(160, len(tag_text) * 7))
+    tag_y0 = max(0, ymin - 24)
+    draw.rectangle([xmin, tag_y0, xmin + tag_w, tag_y0 + 22], fill="#DC2626")
+    draw.text((xmin + 5, tag_y0 + 4), tag_text, fill="#FFFFFF")
+    return annotated
+
+
+def render_cctv_monitor_box(
+    cam_code: str,
+    aisle_label: str,
+    h264_bytes: Optional[bytes],
+    preview_frames: List[Image.Image],
+    duration_sec: float,
+    verdict: Optional[dict] = None,
+    evidence_frame: Optional[Image.Image] = None,
+):
+    """Renders a live-style CCTV monitor box in the browser for uploaded clips (with red bounding box on theft)."""
+    is_theft = bool(verdict and verdict.get("theft_detected"))
+    border_hex = "#EF4444" if is_theft else "#0072CE"
+    hud_status = (
+        f"🚨 THEFT DETECTED ({verdict['confidence_pct']}%)"
+        if is_theft else
+        ("✅ NORMAL ACTIVITY" if verdict else "● PLAYBACK READY")
+    )
+
+    if h264_bytes:
+        b64_vid = base64.b64encode(h264_bytes).decode("utf-8")
+        bbox_overlay_html = ""
+        if is_theft:
+            bbox = verdict.get("suspect_bbox_1000", [150, 220, 880, 780])
+            ymin, xmin, ymax, xmax = bbox[0] / 10.0, bbox[1] / 10.0, bbox[2] / 10.0, bbox[3] / 10.0
+            bbox_overlay_html = f"""
+            <div style="position:absolute; top:{ymin}%; left:{xmin}%; height:{max(12, ymax-ymin)}%; width:{max(12, xmax-xmin)}%;
+                        border:3.5px solid #EF4444; background:rgba(239,68,68,0.14); box-shadow:0 0 16px rgba(239,68,68,0.75);
+                        border-radius:6px; pointer-events:none; box-sizing:border-box;">
+                <span style="position:absolute; top:-23px; left:-3px; background:#DC2626; color:#FFF; font-family:monospace;
+                             font-size:11px; font-weight:800; padding:2px 8px; border-radius:4px 4px 4px 0; white-space:nowrap;">
+                    🚨 {verdict.get('behavior_type', 'SUSPECTED CONCEALMENT')}
+                </span>
+            </div>
+            """
+        monitor_html = f"""
+        <div style="background:#0B2C5F; border-radius:12px; overflow:hidden; position:relative; border:2.5px solid {border_hex}; box-shadow:0 6px 18px rgba(11,44,95,0.16);">
+            <video src="data:video/mp4;base64,{b64_vid}" controls autoplay loop muted playsinline
+                   style="width:100%; max-height:360px; display:block; background:#000;"></video>
+            {bbox_overlay_html}
+            <div style="position:absolute; top:10px; left:10px; right:10px; display:flex; justify-content:space-between; pointer-events:none; font-family:monospace; font-size:11.5px;">
+                <span style="background:rgba(15,23,42,0.86); color:#FFF; padding:4px 9px; border-radius:6px; font-weight:700;">
+                    📹 {cam_code} • {aisle_label} ({duration_sec}s)
+                </span>
+                <span style="background:{'rgba(220,38,38,0.94)' if is_theft else 'rgba(4,120,87,0.92)'}; color:#FFF; padding:4px 9px; border-radius:6px; font-weight:700;">
+                    {hud_status}
+                </span>
+            </div>
+        </div>
+        """
+        components.html(monitor_html, height=380)
+    elif preview_frames:
+        # Fallback interactive canvas CCTV player when ffmpeg isn't installed on server
+        encoded_frames = []
+        for idx, frm in enumerate(preview_frames):
+            # If theft was detected, highlight the latter half of playback frames with the red rectangle
+            if is_theft and idx >= len(preview_frames) // 2:
+                frm_to_show = draw_theft_bbox_on_frame(
+                    frm,
+                    verdict.get("suspect_bbox_1000", [150, 220, 880, 780]),
+                    f"🚨 {verdict.get('behavior_type', 'CONCEALMENT')} ({verdict['confidence_pct']}%)",
+                )
+            else:
+                frm_to_show = frm
+            buf = io.BytesIO()
+            frm_to_show.save(buf, format="JPEG", quality=78)
+            encoded_frames.append("data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode("utf-8"))
+
+        player_html = f"""<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8" /></head>
+<body style="margin:0; padding:0; background:transparent; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+<div style="background:#0B2C5F; border-radius:12px; overflow:hidden; position:relative; border:2.5px solid {border_hex};">
+  <img id="screen" src="{encoded_frames[0]}" style="width:100%; max-height:330px; object-fit:contain; display:block; background:#000;" />
+  <div style="position:absolute; top:10px; left:10px; right:10px; display:flex; justify-content:space-between; pointer-events:none; font-family:monospace; font-size:11.5px;">
+    <span style="background:rgba(15,23,42,0.86); color:#FFF; padding:4px 9px; border-radius:6px; font-weight:700;">
+      📹 {cam_code} • {aisle_label} ({duration_sec}s)
+    </span>
+    <span style="background:{'rgba(220,38,38,0.94)' if is_theft else 'rgba(4,120,87,0.92)'}; color:#FFF; padding:4px 9px; border-radius:6px; font-weight:700;">
+      {hud_status}
+    </span>
+  </div>
+  <div style="background:#0F172A; padding:8px 12px; display:flex; align-items:center; gap:10px; color:#FFF; font-size:12px;">
+    <button id="playBtn" onclick="togglePlay()" style="background:#0072CE; color:#FFF; border:none; border-radius:6px; padding:5px 12px; font-weight:700; cursor:pointer;">⏸ Pause</button>
+    <input id="scrubber" type="range" min="0" max="{len(encoded_frames)-1}" value="0" oninput="seekFrame(this.value)" style="flex:1; cursor:pointer;" />
+    <span id="frameInfo" style="font-family:monospace;">1 / {len(encoded_frames)}</span>
+  </div>
+</div>
+<script>
+const frames = {json.dumps(encoded_frames)};
+let idx = 0;
+let playing = true;
+const imgEl = document.getElementById('screen');
+const scrubEl = document.getElementById('scrubber');
+const infoEl = document.getElementById('frameInfo');
+const btnEl = document.getElementById('playBtn');
+
+function renderIdx(i) {{
+  idx = Number(i);
+  imgEl.src = frames[idx];
+  scrubEl.value = idx;
+  infoEl.innerText = (idx + 1) + " / " + frames.length;
+}}
+
+function seekFrame(val) {{
+  playing = false;
+  btnEl.innerText = "▶ Play";
+  renderIdx(val);
+}}
+
+function togglePlay() {{
+  playing = !playing;
+  btnEl.innerText = playing ? "⏸ Pause" : "▶ Play";
+}}
+
+setInterval(() => {{
+  if (playing && frames.length > 1) {{
+    renderIdx((idx + 1) % frames.length);
+  }}
+}}, 240);
+</script>
+</body>
+</html>"""
+        components.html(player_html, height=390)
+
+    if is_theft and evidence_frame is not None:
+        st.image(
+            evidence_frame,
+            caption=f"🚨 AI Detection Snapshot — Red Bounding Box Around Suspect / Concealment Zone ({verdict['confidence_pct']}% Confidence)",
+            use_container_width=True,
+        )
 
 
 def update_shared_inventory(scan_result: ShelfScanResult, barcode_hits: list, accumulate: bool, source_label: str, active_user: str):
@@ -1248,7 +1549,7 @@ else:
     tab_cctv = None
 
 # ==========================================
-# TAB 1: CONTINUOUS LIVE VIEWFINDER (USER-STAMPED)
+# TAB 1: CONTINUOUS LIVE VIEWFINDER (REV01 BACK CAMERA ONLY)
 # ==========================================
 with tab_scanner:
     col_cam, col_list = st.columns([1.1, 1], gap="large")
@@ -1775,12 +2076,12 @@ if tab_alerts is not None:
         render_automated_alerts()
 
 # ==========================================
-# TAB 5: OVERHEAD CCTV THEFT BEHAVIORAL DETECTION
+# TAB 5: OVERHEAD CCTV THEFT BEHAVIORAL DETECTION (REV02)
 # ==========================================
 if tab_cctv is not None:
     with tab_cctv:
         st.subheader("🛡️ Overhead Store CCTV — Behavioral Theft Detection")
-        st.caption("Dedicated fixed overhead aisle camera feed (separate from handheld inventory phones). Detects concealment gestures and shelf sweeping in real time and dispatches alerts directly to Automated Store Alerts.")
+        st.caption("Dedicated fixed overhead aisle camera feed (separate from handheld inventory phones). Detects concealment gestures and shelf sweeping in real time with red bounding box tracking.")
 
         col_cctv, col_arch = st.columns([1.25, 1], gap="large")
 
@@ -1800,18 +2101,18 @@ if tab_cctv is not None:
             cctv_source = st.radio(
                 "Overhead Camera Input Source:",
                 [
-                    "📹 Live Overhead CCTV Feed (OBS Virtual Camera)",
+                    "📹 Live Overhead CCTV Feed (Camera Stream)",
                     "🎞️ Upload Overhead CCTV Footage (.mp4 / .mov)",
                 ],
                 horizontal=True,
             )
 
-            if cctv_source == "📹 Live Overhead CCTV Feed (OBS Virtual Camera)":
+            if cctv_source == "📹 Live Overhead CCTV Feed (Camera Stream)":
                 cctv_event = cctv_guard_component(
                     api_key=active_gemini_key,
                     cam_code=cam_code,
                     aisle=aisle_label,
-                    key="live_ezviz_cctv_guard_v10",
+                    key="live_ezviz_cctv_guard_v11_rev02",
                 )
 
                 if isinstance(cctv_event, dict) and cctv_event.get("alert_id"):
@@ -1825,7 +2126,7 @@ if tab_cctv is not None:
                             "behavior_type": cctv_event.get("behavior_type", "Suspicious Concealment"),
                             "confidence_pct": cctv_event.get("confidence_pct", 88),
                             "description": cctv_event.get("description", "Overhead AI detected suspicious item concealment."),
-                            "recommended_action": cctv_event.get("recommended_action", "Dispatch floor security supervisor."),
+                            "recommended_action": cctv_event.get("recommended_action", "Continue live CCTV tracking, offer proactive aisle assistance, and notify licensed security supervisor near POS exit."),
                         })
                         st.rerun()
 
@@ -1848,7 +2149,7 @@ if tab_cctv is not None:
                         "behavior_type": sim_behavior,
                         "confidence_pct": 94,
                         "description": f"Overhead pose & action model detected hand-to-bag concealment gesture at {aisle_label} without placing items in a store basket.",
-                        "recommended_action": "Dispatch floor security supervisor to aisle exit & review 10-second CCTV buffer.",
+                        "recommended_action": "Continue live CCTV tracking, offer friendly customer assistance in aisle, and notify licensed security supervisor near POS exit.",
                     })
                     st.error(f"🚨 Theft alert dispatched at {now_str}! Check Automated Store Alerts.")
                     st.rerun()
@@ -1856,15 +2157,43 @@ if tab_cctv is not None:
             else:
                 cctv_clip = st.file_uploader("Upload Overhead Aisle CCTV Video Clip (.mp4, .mov)", type=["mp4", "mov", "avi"])
                 if cctv_clip is not None:
-                    st.video(cctv_clip)
+                    raw_bytes = cctv_clip.read()
+                    file_sig = f"{cctv_clip.name}_{len(raw_bytes)}"
+                    if st.session_state.last_cctv_file_sig != file_sig:
+                        st.session_state.last_cctv_file_sig = file_sig
+                        st.session_state.last_cctv_verdict = None
+
+                    h264_bytes, preview_frames, ai_keyframes, duration_sec = prepare_cctv_browser_playback(raw_bytes)
+
+                    verdict_dict = st.session_state.last_cctv_verdict
+                    evidence_img = None
+                    if verdict_dict and verdict_dict.get("theft_detected") and ai_keyframes:
+                        k_idx = min(len(ai_keyframes) - 1, max(0, int(verdict_dict.get("key_frame_index", len(ai_keyframes))) - 1))
+                        evidence_img = draw_theft_bbox_on_frame(
+                            ai_keyframes[k_idx],
+                            verdict_dict.get("suspect_bbox_1000", [150, 220, 880, 780]),
+                            f"🚨 {verdict_dict['behavior_type']} ({verdict_dict['confidence_pct']}%)",
+                        )
+
+                    # Render live-style CCTV monitor box (plays every codec cleanly in browser + draws red rectangle on theft)
+                    render_cctv_monitor_box(
+                        cam_code=cam_code,
+                        aisle_label=aisle_label,
+                        h264_bytes=h264_bytes,
+                        preview_frames=preview_frames,
+                        duration_sec=duration_sec,
+                        verdict=verdict_dict,
+                        evidence_frame=evidence_img,
+                    )
+
                     if st.button("🔍 Run Behavioral Theft Analysis on CCTV Clip", type="primary", use_container_width=True):
                         with st.spinner("Analyzing shopper skeleton posture & hand-to-pocket concealment across CCTV frames..."):
                             try:
-                                clip_frames = extract_video_keyframes(cctv_clip.read(), max_frames=6)
-                                if not clip_frames:
+                                if not ai_keyframes:
                                     st.error("Could not read frames from uploaded CCTV clip.")
                                 else:
-                                    verdict = analyze_cctv_theft_behavior(clip_frames, cam_code, active_gemini_key)
+                                    verdict = analyze_cctv_theft_behavior(ai_keyframes, cam_code, active_gemini_key)
+                                    st.session_state.last_cctv_verdict = verdict.model_dump()
                                     now_str = datetime.now().strftime("%Y-%m-%d %I:%M:%S %p")
                                     if verdict.theft_detected:
                                         shared_db["theft_alerts"].insert(0, {
@@ -1876,12 +2205,37 @@ if tab_cctv is not None:
                                             "description": verdict.description,
                                             "recommended_action": verdict.recommended_action,
                                         })
-                                        st.error(f"🚨 THEFT BEHAVIOR DETECTED ({verdict.confidence_pct}% confidence) at {now_str}! Alert sent.")
                                         st.rerun()
                                     else:
-                                        st.success(f"✅ Normal Shopping Behavior ({verdict.confidence_pct}% confidence): {verdict.description}")
+                                        st.rerun()
                             except Exception as ex:
                                 st.error(f"CCTV analysis error: {ex}")
+
+                    if verdict_dict:
+                        if verdict_dict.get("theft_detected"):
+                            st.error(
+                                f"🚨 **THEFT BEHAVIOR DETECTED ({verdict_dict['confidence_pct']}% confidence):** "
+                                f"{verdict_dict['behavior_type']} — {verdict_dict['description']}  \n"
+                                f"**Recommended Action:** {verdict_dict['recommended_action']}"
+                            )
+                        else:
+                            st.success(
+                                f"✅ **Normal Shopping Behavior ({verdict_dict['confidence_pct']}% confidence):** "
+                                f"{verdict_dict['description']}"
+                            )
+
+                    if ai_keyframes:
+                        with st.expander("🎞️ View 6 Extracted CCTV Keyframes Inspected by AI", expanded=False):
+                            kf_cols = st.columns(3)
+                            for i, kf in enumerate(ai_keyframes):
+                                display_kf = kf
+                                if verdict_dict and verdict_dict.get("theft_detected") and (i + 1) == verdict_dict.get("key_frame_index"):
+                                    display_kf = draw_theft_bbox_on_frame(
+                                        kf,
+                                        verdict_dict.get("suspect_bbox_1000", [150, 220, 880, 780]),
+                                        "🚨 CONCEALMENT FRAME",
+                                    )
+                                kf_cols[i % 3].image(display_kf, caption=f"Frame {i+1} / {len(ai_keyframes)}", use_container_width=True)
 
             st.markdown('</div>', unsafe_allow_html=True)
 
@@ -1895,7 +2249,7 @@ if tab_cctv is not None:
 2. **Action & Concealment Recognition (SlowFast / VideoMAE + Vision AI):** Analyzes 3–5 second motion sequences to detect:
   - **Concealment:** Hand picks item from shelf and moves directly into a pocket, backpack, or under clothing.
   - **Shelf Sweeping:** Rapidly clearing multiple high-value items into a personal bag.
-3. **Instant Alert Routing:** Whenever suspicious behavior is detected, StockSense timestamps the exact camera channel and aisle and pushes a **Priority Security Alert** to the Store Manager's alert feed.
+3. **Instant Alert Routing:** Whenever suspicious behavior is detected, StockSense locks a **red bounding rectangle** on the suspect zone, timestamps the exact camera channel and aisle, and pushes a **Priority Security Alert** to the Store Manager's alert feed.
             """)
             st.markdown("---")
             st.markdown("#### 📡 Overhead CCTV Edge Telemetry")
