@@ -352,7 +352,7 @@ function frameChangedSignificantly() {
 async function ensureCameraStarted() {
   if (activeCamStream && video.srcObject) return true;
   try {
-    activeCamStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false });
+    activeCamStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
     video.srcObject = activeCamStream;
     await video.play().catch(() => {});
     badge.innerText = "● LIVE CAMERA READY";
