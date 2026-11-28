@@ -226,7 +226,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- REGISTER TWO-WAY LIVE SHELF SCANNER COMPONENT (BACK CAMERA ONLY) ---
+# --- REGISTER TWO-WAY LIVE SHELF SCANNER COMPONENT (BACK CAMERA ONLY - REV01/REV03 UNCHANGED) ---
 @st.cache_resource
 def get_live_scanner_component():
     comp_dir = os.path.join(tempfile.gettempdir(), "stocksense_live_scanner_brand_v16")
@@ -501,10 +501,10 @@ async function scanSingleNow(forceManual) {
 
 live_scanner_component = get_live_scanner_component()
 
-# --- REGISTER MOBILE REAR-CAMERA THEFT DETECTOR COMPONENT (REV03 — NO OBS, BACK CAMERA ONLY) ---
+# --- REGISTER MOBILE REAR-CAMERA THEFT DETECTOR COMPONENT (REV04: 5-FRAME 2.4S WINDOW + 512PX + 60% THRESHOLD) ---
 @st.cache_resource
 def get_live_theft_camera_component():
-    comp_dir = os.path.join(tempfile.gettempdir(), "stocksense_mobile_theft_cam_rev03")
+    comp_dir = os.path.join(tempfile.gettempdir(), "stocksense_mobile_theft_cam_rev04")
     os.makedirs(comp_dir, exist_ok=True)
     index_path = os.path.join(comp_dir, "index.html")
     html_code = """<!DOCTYPE html>
@@ -564,12 +564,10 @@ def get_live_theft_camera_component():
       <span id="camClock" class="clk"></span>
     </div>
     <div class="bot-hud">
-      <span id="poseHud" class="pose">3-FRAME BEHAVIORAL DETECTOR READY</span>
+      <span id="poseHud" class="pose">5-FRAME (2.4S) BEHAVIORAL DETECTOR READY</span>
     </div>
   </div>
-  <canvas id="c1" style="display:none;"></canvas>
-  <canvas id="c2" style="display:none;"></canvas>
-  <canvas id="c3" style="display:none;"></canvas>
+  <canvas id="captureC" style="display:none;"></canvas>
   <canvas id="motionC" width="32" height="32" style="display:none;"></canvas>
 
   <div class="controls">
@@ -577,7 +575,7 @@ def get_live_theft_camera_component():
     <button class="btn-check" onclick="runBurstCheck(true)">⚡ Check Now</button>
   </div>
   <div id="guardStatus" class="status-box">
-    Point rear camera at shopper / aisle and tap <b>Start Live Theft Detection</b>...
+    Point rear camera at shopper / aisle (waist-to-head view) and tap <b>Start Live Theft Detection</b>...
   </div>
 </div>
 
@@ -633,7 +631,7 @@ function showRedBoundingBox(bboxNorm, labelText) {
   bboxHideTimer = setTimeout(() => {
     boxEl.style.display = "none";
     wrapEl.style.borderColor = "#0072CE";
-  }, 8000);
+  }, 8500);
 }
 
 function sendToStreamlit(type, data) {
@@ -655,9 +653,7 @@ sendToStreamlit("streamlit:setFrameHeight", { height: 530 });
 
 const v = document.getElementById('theftCam');
 const camBadge = document.getElementById('camBadge');
-const c1 = document.getElementById('c1');
-const c2 = document.getElementById('c2');
-const c3 = document.getElementById('c3');
+const captureC = document.getElementById('captureC');
 const motionC = document.getElementById('motionC');
 const poseHud = document.getElementById('poseHud');
 const guardBtn = document.getElementById('guardBtn');
@@ -675,7 +671,7 @@ function hasSignificantMotion() {
   let diff = 0;
   for (let i = 0; i < data.length; i += 16) { diff += Math.abs(data[i] - prevThumb[i]); }
   prevThumb = data;
-  return (diff / (data.length / 16)) > 3.2;
+  return (diff / (data.length / 16)) > 2.8;
 }
 
 async function openBackCameraOnly() {
@@ -727,9 +723,9 @@ async function toggleGuard() {
     }
     guardBtn.innerText = "⏸ Pause Theft Detection";
     guardBtn.style.background = "#0B2C5F";
-    poseHud.innerText = "THEFT DETECTION: ACTIVE (3-FRAME BURST)";
+    poseHud.innerText = "THEFT DETECTION: ACTIVE (5-FRAME 2.4S)";
     runBurstCheck(true);
-    guardTimer = setInterval(() => runBurstCheck(false), 5000);
+    guardTimer = setInterval(() => runBurstCheck(false), 5200);
   } else {
     guardBtn.innerText = "🛡️ Start Live Theft Detection";
     guardBtn.style.background = "linear-gradient(90deg, #DC2626 0%, #B91C1C 100%)";
@@ -738,11 +734,11 @@ async function toggleGuard() {
   }
 }
 
-function captureFrame(canvasEl) {
-  canvasEl.width = 384;
-  canvasEl.height = Math.round((v.videoHeight / v.videoWidth) * 384);
-  canvasEl.getContext('2d').drawImage(v, 0, 0, canvasEl.width, canvasEl.height);
-  return canvasEl.toDataURL('image/jpeg', 0.65).split(',')[1];
+function captureFrame512() {
+  captureC.width = 512;
+  captureC.height = Math.round((v.videoHeight / v.videoWidth) * 512);
+  captureC.getContext('2d').drawImage(v, 0, 0, captureC.width, captureC.height);
+  return captureC.toDataURL('image/jpeg', 0.72).split(',')[1];
 }
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
@@ -762,31 +758,36 @@ async function runBurstCheck(forceManual) {
   }
 
   busy = true;
-  poseHud.innerText = "🔍 ANALYZING 3-FRAME SEQUENCE...";
-  poseHud.style.color = "#FBBF24";
+  const frames = [];
+  for (let step = 0; step < 5; step++) {
+    poseHud.innerText = `🔍 CAPTURING SEQUENCE (${step + 1}/5)...`;
+    poseHud.style.color = "#FBBF24";
+    frames.push(captureFrame512());
+    if (step < 4) await sleep(600);
+  }
 
-  const frame1 = captureFrame(c1);
-  await sleep(500);
-  const frame2 = captureFrame(c2);
-  await sleep(500);
-  const frame3 = captureFrame(c3);
+  poseHud.innerText = "🧠 ANALYZING ACTION ARC...";
 
-  const prompt = `You are StockSense AI Loss-Prevention running on live aisle camera (${CAM_CODE} - ${AISLE}). Compare these 3 sequential frames (0.5s apart: before, during, after) for shoplifting or suspicious theft behavior: picking up an item and concealing/placing it into a pocket, backpack, bag, or under clothing/jacket, or rapid shelf sweeping. If theft behavior is detected, return normalized 0-1000 coordinates [ymin, xmin, ymax, xmax] around the person/concealment zone in Frame 3. Recommended actions must follow non-confrontational retail loss-prevention policy (monitor via camera, offer friendly customer service in aisle, alert licensed security before POS exit—never instruct staff to search pockets). Return ONLY valid JSON: {"theft_detected": true/false, "behavior_type": "...", "confidence_pct": 85, "suspect_bbox_1000": [150, 220, 880, 780], "description": "...", "recommended_action": "..."}`;
+  const prompt = `You are StockSense AI Loss-Prevention running on a live retail aisle / classroom retail simulation camera (${CAM_CODE} - ${AISLE}). Analyze these 5 chronological frames captured over 2.4 seconds (0.6s apart: Frame 1 = start, Frame 3 = mid-action, Frame 5 = completion) for shoplifting or simulated theft concealment behavior:
+- Picking up or holding an item/product and slipping, tucking, or hiding it into a trouser/jacket pocket, backpack, personal bag, or under clothing/thobe.
+- Rapidly sweeping multiple items into a bag or pocket.
+- Note: Even if the background is a table, desk, or classroom retail mockup rather than a full supermarket shelf, if a person picks up an object and conceals it into a pocket, bag, or under clothing across the 5 frames, classify theft_detected = true.
+- If theft behavior is detected, return normalized 0-1000 coordinates [ymin, xmin, ymax, xmax] framing the person and concealment area in Frame 5.
+- Recommended actions must follow non-confrontational retail loss-prevention policy (monitor via camera, offer friendly customer service in aisle, alert licensed security before POS exit—never instruct staff to search pockets).
+Return ONLY valid JSON: {"theft_detected": true/false, "behavior_type": "...", "confidence_pct": 85, "suspect_bbox_1000": [150, 220, 880, 780], "description": "...", "recommended_action": "..."}`;
 
   const pool = ["gemini-3.5-flash-lite", "gemini-3.1-flash-lite", "gemini-3.8-flash", "gemini-3.6-flash"];
   for (let i = 0; i < pool.length; i++) {
     const model = pool[(modelCursor + i) % pool.length];
     try {
+      const partsPayload = [{ text: prompt }];
+      frames.forEach(b64 => partsPayload.push({ inline_data: { mime_type: "image/jpeg", data: b64 } }));
+
       const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-goog-api-key": API_KEY },
         body: JSON.stringify({
-          contents: [{ parts: [
-            { text: prompt },
-            { inline_data: { mime_type: "image/jpeg", data: frame1 } },
-            { inline_data: { mime_type: "image/jpeg", data: frame2 } },
-            { inline_data: { mime_type: "image/jpeg", data: frame3 } }
-          ]}],
+          contents: [{ parts: partsPayload }],
           generationConfig: { responseMimeType: "application/json", temperature: 0.1 }
         })
       });
@@ -796,7 +797,7 @@ async function runBurstCheck(forceManual) {
       const verdict = JSON.parse(data.candidates[0].content.parts[0].text);
       const ts = new Date().toLocaleTimeString();
 
-      if (verdict.theft_detected && verdict.confidence_pct >= 70) {
+      if (verdict.theft_detected && verdict.confidence_pct >= 60) {
         playAlertChime();
         showRedBoundingBox(verdict.suspect_bbox_1000, `${verdict.behavior_type} (${verdict.confidence_pct}%)`);
         poseHud.innerText = "🚨 THEFT GESTURE DETECTED (" + verdict.confidence_pct + "%)";
@@ -830,7 +831,7 @@ async function runBurstCheck(forceManual) {
 </html>"""
     with open(index_path, "w", encoding="utf-8") as f:
         f.write(html_code)
-    return components.declare_component("stocksense_mobile_theft_cam_rev03", path=comp_dir)
+    return components.declare_component("stocksense_mobile_theft_cam_rev04", path=comp_dir)
 
 mobile_theft_cam_component = get_live_theft_camera_component()
 
@@ -1537,7 +1538,7 @@ with bar_c2:
         st.session_state.authenticated_user = None
         st.rerun()
 
-# --- ROLE-BASED NAVIGATION TABS (REV03: 5 TABS FOR MANAGER, 2 TABS FOR MOBILE AUDITOR) ---
+# --- ROLE-BASED NAVIGATION TABS (5 TABS FOR MANAGER, 2 TABS FOR MOBILE AUDITOR) ---
 theft_count = len(shared_db["theft_alerts"])
 alerts_tab_label = f"📲 Automated Store Alerts (🚨 {theft_count})" if theft_count > 0 else "📲 Automated Store Alerts"
 
@@ -2085,11 +2086,11 @@ if tab_alerts is not None:
         render_automated_alerts()
 
 # ==========================================
-# TAB 5: BEHAVIORAL THEFT DETECTION (MOBILE REAR CAMERA + CLIP TESTER — AVAILABLE TO BOTH MANAGER & AUDITOR)
+# TAB 5: BEHAVIORAL THEFT DETECTION (REV04: 5-FRAME 2.4S LIVE DETECTOR + CLIP TESTER)
 # ==========================================
 with tab_cctv:
     st.subheader("🛡️ Behavioral Theft Detection")
-    st.caption("Uses the mobile rear camera to detect item concealment in pockets/bags or rapid shelf sweeping in real time—flashing a red detection box and dispatching alerts straight to the Manager's dashboard.")
+    st.caption("Analyzes a 5-frame sequence (2.4 seconds) on the mobile rear camera to detect item concealment in pockets/bags or rapid shelf sweeping in real time.")
 
     col_cctv, col_arch = st.columns([1.25, 1], gap="large")
 
@@ -2119,7 +2120,7 @@ with tab_cctv:
                 api_key=active_gemini_key,
                 cam_code=cam_code,
                 aisle=aisle_label,
-                key="mobile_theft_cam_rev03",
+                key="mobile_theft_cam_rev04",
             )
 
             if isinstance(cctv_event, dict) and cctv_event.get("alert_id"):
@@ -2136,7 +2137,7 @@ with tab_cctv:
                         "description": cctv_event.get("description", "AI detected suspicious item concealment."),
                         "recommended_action": cctv_event.get("recommended_action", "Continue live camera tracking, offer friendly aisle assistance, and notify licensed security supervisor near POS exit."),
                     })
-                    st.toast(f"🚨 Theft alert dispatched to Manager Dashboard!", icon="🚨")
+                    st.toast("🚨 Theft alert dispatched to Manager Dashboard!", icon="🚨")
                     st.rerun()
 
             st.markdown("---")
@@ -2251,9 +2252,9 @@ with tab_cctv:
         st.markdown('<div class="chart-card">', unsafe_allow_html=True)
         st.markdown("#### 🧠 How StockSense Behavioral Theft Detection Works")
         st.markdown("""
-        **Behavioral Theft Detection** analyzes 3-frame motion sequences (`0ms → 500ms → 1000ms`) in real time without facial recognition:
+        **Behavioral Theft Detection** analyzes 5-frame motion sequences (`0s → 0.6s → 1.2s → 1.8s → 2.4s`) in real time without facial recognition:
 
-1. **Skeleton & Hand Trajectory Analysis:** Tracks wrist-to-shelf and wrist-to-pocket/bag movement across consecutive frames.
+1. **Skeleton & Hand Trajectory Analysis:** Tracks wrist-to-shelf and wrist-to-pocket/bag movement across 5 consecutive frames.
 2. **Concealment & Sweeping Classification:** Distinguishes normal browsing/basket placement from:
   - **Pocket / Bag Concealment:** Item removed from shelf and slipped into a pocket, backpack, or under clothing.
   - **Rapid Shelf Sweeping:** Clearing multiple high-value items into a personal bag.
